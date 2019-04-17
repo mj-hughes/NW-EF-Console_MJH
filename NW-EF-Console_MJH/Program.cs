@@ -93,7 +93,7 @@ namespace NW_EF_Console_MJH
 
                 if (choice == "1")
                 {
-                    // AddProduct(db);
+                    AddProduct(db);
                 }
                 else if (choice == "2")
                 {
@@ -127,7 +127,114 @@ namespace NW_EF_Console_MJH
 
         }
 
-        // TODO AddProduct
+        /// <summary>
+        /// Turns 2-line console prompt/get answer into one line.
+        /// </summary>
+        /// <param name="prompt"></param>
+        /// <returns></returns>
+        public static string getAnswer(String prompt)
+        {
+            Console.WriteLine(prompt);
+            return Console.ReadLine();
+        }
+
+        public static void AddProduct(NWContext db)
+        {
+            Product product = new Product();
+            String answer = "";
+            product.ProductName = getAnswer("Enter product name (required):");
+
+            answer = getAnswer("Enter the supplier ID (if any):");
+            if (answer == "")
+                product.SupplierId = null;
+            else if (int.TryParse(answer, out int id))
+                product.SupplierId = id;
+            else
+                logger.Error("Must be an integer or null.");
+
+            answer = getAnswer("Enter the category ID (if any):");
+            if (answer == "")
+                product.CategoryId = null;
+            else if (int.TryParse(answer, out int id))
+                product.CategoryId = id;
+            else
+                logger.Error("Must be an integer or null.");
+
+            product.QuantityPerUnit = getAnswer("Enter quantity per unit:");
+
+            answer = getAnswer("Enter the unit price:");
+            if (answer == "")
+                product.UnitPrice = null;
+            else if (Double.TryParse(answer, out double price))
+                product.UnitPrice = (decimal)price;
+            else
+                logger.Error("Must be a money value (0.00) or null.");
+
+            answer = getAnswer("Enter the units in stock (0-32767):");
+            if (answer == "")
+                product.UnitsInStock = null;
+            else if (short.TryParse(answer, out short qty))
+                product.UnitsInStock = qty;
+            else
+                logger.Error("Must be a short integer or null.");
+
+            answer = getAnswer("Enter the units on order (0-32767):");
+            if (answer == "")
+                product.UnitsOnOrder = null;
+            else if (short.TryParse(answer, out short qty))
+                product.UnitsOnOrder = qty;
+            else
+                logger.Error("Must be a short integer or null.");
+
+            answer = getAnswer("Enter the reorder level (0-32767):");
+            if (answer == "")
+                product.ReorderLevel = null;
+            else if (short.TryParse(answer, out short qty))
+                product.ReorderLevel = qty;
+            else
+                logger.Error("Must be a short integer or null.");
+
+            product.Discontinued = false;
+
+            ValidationContext context = new ValidationContext(product, null, null);
+            List<ValidationResult> results = new List<ValidationResult>();
+
+            var isValid = Validator.TryValidateObject(product, context, results, true);
+            if (isValid)
+            {
+                // check for unique name
+                if (db.Products.Any(p => p.ProductName == product.ProductName))
+                {
+                    // generate validation error
+                    isValid = false;
+                    results.Add(new ValidationResult("Name exists", new string[] { "ProductName" }));
+                }
+                else
+                {
+                    logger.Info("Validation passed");
+
+                    // TODO: save product to db
+                    try
+                    {
+                        db.Products.Add(product);
+                        db.SaveChanges();
+                        logger.Info($"Product {product.ProductName} added.");
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.Error(ex.Message);
+                    }
+                }
+            }
+            if (!isValid)
+            {
+                foreach (var result in results)
+                {
+                    logger.Error($"{result.MemberNames.First()} : {result.ErrorMessage}");
+                }
+            }
+
+        }
 
         public static void DisplayProducts(NWContext db, String pChoice)
         {
