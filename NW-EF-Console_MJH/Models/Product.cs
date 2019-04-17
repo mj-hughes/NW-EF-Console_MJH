@@ -11,10 +11,13 @@ namespace NW_EF_Console_MJH.Models
         public string ProductName { get; set; }
         public string QuantityPerUnit { get; set; }
         public decimal? UnitPrice { get; set; }
+        [Range(0, 32767, ErrorMessage = "Value for {0} must be between {1} and {2}.")]
         public Int16? UnitsInStock { get; set; }
+        [Range(0, 32767, ErrorMessage = "Value for {0} must be between {1} and {2}.")]
         public Int16? UnitsOnOrder { get; set; }
-        [Range(0, 1000, ErrorMessage = "Value for {0} must be between {1} and {2}.")]
+        [Range(0, 32767, ErrorMessage = "Value for {0} must be between {1} and {2}.")]
         public Int16? ReorderLevel { get; set; }
+        [Required(ErrorMessage ="Please choose true or false for discontinued")]
         public bool Discontinued { get; set; }
 
         public int? CategoryId { get; set; }
