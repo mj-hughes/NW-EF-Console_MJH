@@ -20,5 +20,21 @@ namespace NW_EF_Console_MJH.Models
             this.Categories.Add(category);
             this.SaveChanges();
         }
+
+        // public method
+        public string DisplayAProduct(Product product)
+        {
+            return $"ID:\t\t {product.ProductID}\n" +
+                $"Name:\t\t {product.ProductName}\n" +
+                $"Supplier ID:\t {product.SupplierId}\n" +
+                $"Category ID:\t {product.CategoryId}: {product.Category.CategoryName}\n" +
+                $"Quantity/Unit:\t {product.QuantityPerUnit}\n" +
+                $"Unit Price:\t {product.UnitPrice}\n" +
+                $"Units in Stock:\t {product.UnitsInStock}\n"+
+                $"Units on Order:\t {product.UnitsOnOrder}\n"+
+                $"Reorder Level:\t {product.ReorderLevel}\n"+
+                $"Discontinued:\t {product.Discontinued}\n";
+        }
+
     }
 }

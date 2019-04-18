@@ -159,21 +159,36 @@ namespace NW_EF_Console_MJH
                 }
                 else if (choice == "4")
                 {
-                    // TODO: Display a single product (the whole record)
+                    int productId=FindAndDisplayOneProduct(db); // Display a single product (the whole record)
                 }
                 Console.WriteLine();
             } while (choice.ToLower() != "q");
 
         }
 
-        public static void EditProduct(NWContext db)
+        public static int FindAndDisplayOneProduct(NWContext db)
         {
-            // First, find the product to edit
+            // Display a single product (the whole record)
             int pId = FindProduct(db);
             if (pId>-1)
             {
+                Console.Clear();
+                var query = db.Products.Where(p => p.ProductID.Equals(pId));
+                foreach (var p in query)
+                    Console.WriteLine(db.DisplayAProduct(p));
+            }
+            return pId;
+
+        }
+
+        public static void EditProduct(NWContext db)
+        {
+            // Find and display the product to edit
+            int pId = FindAndDisplayOneProduct(db);
+            if (pId>-1)
+            {
                 // TODO Edit the product
-                Console.WriteLine($"Getting product {pId}.");
+                Console.WriteLine($"Editing product {pId}.");
             }
         }
 
@@ -240,20 +255,20 @@ namespace NW_EF_Console_MJH
                             if (int.TryParse(itemChosen, out int id))
                                 pId = id;
                             else
-                                Console.WriteLine("No valid ID chosen.");
+                                logger.Info("No valid ID chosen.");
                         }
                     }
                     else
                     {
-                        Console.WriteLine($"No products found where product name contains {searchItem}.");
+                        logger.Info($"No products found where product name contains {searchItem}.");
                     }
-
-
                 }
 
                 Console.WriteLine();
             } while ((choice.ToLower()) != "q" && (pId==-1));
 
+            if (pId > -1)
+                logger.Info($"Returning product id {pId}.");
             return pId;
         }
 
