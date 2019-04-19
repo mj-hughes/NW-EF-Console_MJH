@@ -39,16 +39,20 @@ namespace NW_EF_Console_MJH.Models
         // Display one product
         public string DisplayAProduct(Product product)
         {
-            return $"ID:\t\t {product.ProductID}\n" +
+            string returnDisplay = $"ID:\t\t {product.ProductID}\n" +
                 $"Name:\t\t {product.ProductName}\n" +
-                $"Supplier ID:\t {product.SupplierId}\n" +
-                $"Category ID:\t {product.CategoryId}: {product.Category.CategoryName}\n" +
-                $"Quantity/Unit:\t {product.QuantityPerUnit}\n" +
+                $"Supplier ID:\t {product.SupplierId}\n";
+            if (product.CategoryId.HasValue)
+                returnDisplay += $"Category ID:\t {product.CategoryId}: {product.Category.CategoryName}\n";
+            else
+                returnDisplay += $"Category ID:\t {product.CategoryId}\n";
+            returnDisplay += $"Quantity/Unit:\t {product.QuantityPerUnit}\n" +
                 $"Unit Price:\t {product.UnitPrice,10:c2}\n" +
-                $"Units in Stock:\t {product.UnitsInStock}\n"+
-                $"Units on Order:\t {product.UnitsOnOrder}\n"+
-                $"Reorder Level:\t {product.ReorderLevel}\n"+
+                $"Units in Stock:\t {product.UnitsInStock}\n" +
+                $"Units on Order:\t {product.UnitsOnOrder}\n" +
+                $"Reorder Level:\t {product.ReorderLevel}\n" +
                 $"Discontinued:\t {product.Discontinued}\n";
+            return returnDisplay;
         }
 
     }

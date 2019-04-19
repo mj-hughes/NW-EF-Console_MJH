@@ -50,7 +50,7 @@ namespace NW_EF_Console_MJH
             logger.Info("Program ended");
         }
 
-        #region Helpers
+#region Helper methods
         /// <summary>
         /// Display items in menu array
         /// </summary>
@@ -88,15 +88,153 @@ namespace NW_EF_Console_MJH
             return Console.ReadLine();
         }
 
-        #endregion
+        //TODO: Is there a way to combine all these validations into one routine?
+        //TODO: Would it be better to call the data annotation validation after each field?
 
-        #region Product Helper Methods
         /// <summary>
-        /// Display products in the given style
+        /// Show user current information and prompt for a new value. Validate as an int. 
         /// </summary>
-        /// <param name="query">Products to display</param>
-        /// <param name="displayType">Style to display</param>
-        public static void consoleDisplayProducts(IEnumerable<Product> query, int displayType)
+        /// <param name="prompt"></param>
+        /// <param name="currval"></param>
+        /// <returns>Return the validated int or the original value if no input.</returns>
+        public static int? validateInt(string prompt, int? currval)
+        {
+            bool done = false;
+
+            int? retval = currval;
+            if (currval == null)
+                prompt = prompt + "null";
+            while (!done)
+            {
+                string answer = getAnswer(prompt);
+                if (answer == "")
+                    done = true;
+                else
+                {
+                    if (int.TryParse(answer, out int newInt))
+                    {
+                        retval = newInt;
+                        done = true;
+                    }
+                    else
+                        Console.WriteLine("Please enter an integer or press return to leave this field.");
+                }
+            }
+
+            return retval;
+        }
+
+        /// <summary>
+        /// Show user current field information and prompt for change. Validate as a decimal. 
+        /// </summary>
+        /// <param name="prompt"></param>
+        /// <param name="currval"></param>
+        /// <returns>Return new value or the original value if no input.</returns>
+        public static decimal? validateDecimal(string prompt, decimal? currval)
+        {
+            bool done = false;
+
+            decimal? retval = currval;
+            if (currval == null)
+                prompt = prompt + "null";
+            while (!done)
+            {
+                string answer = getAnswer(prompt);
+                if (answer == "")
+                    done = true;
+                else
+                {
+                    if (Decimal.TryParse(answer, out decimal newDecimal))
+                    {
+                        retval = newDecimal;
+                        done = true;
+                    }
+                    else
+                        Console.WriteLine("Please enter a money value or press return to leave this field.");
+                }
+            }
+
+            return retval;
+        }
+
+        /// <summary>
+        /// Show user current field value and prompt for change. Validate short. 
+        /// </summary>
+        /// <param name="prompt"></param>
+        /// <param name="currval"></param>
+        /// <returns>Return new value or current if none entered.</returns>
+        public static short? validateShort(string prompt, short? currval)
+        {
+            bool done = false;
+
+            short? retval = currval;
+            if (currval == null)
+                prompt = prompt + "null";
+            while (!done)
+            {
+                string answer = getAnswer(prompt);
+                if (answer == "")
+                    done = true;
+                else
+                {
+                    if (short.TryParse(answer, out short newShort))
+                    {
+                        retval = newShort;
+                        done = true;
+                    }
+                    else
+                        Console.WriteLine("Please enter a number or press return to leave this field.");
+                }
+            }
+
+            return retval;
+        }
+
+        /// <summary>
+        /// Show user current field value. Ask for update. Validate as boolean. Return new value or original if no new value entered.
+        /// </summary>
+        /// <param name="prompt"></param>
+        /// <param name="currval"></param>
+        /// <param name="retval"></param>
+        /// <returns></returns>
+        public static bool validateBoolean(string prompt, bool currval)
+        {
+            bool done = false;
+
+            bool retval = currval;
+            if (currval == null)
+                prompt = prompt + "null";
+            while (!done)
+            {
+                string answer = getAnswer(prompt);
+                if (answer == "")
+                    done = true;
+                else
+                {
+                    if (Boolean.TryParse(answer, out bool newBool))
+                    {
+                        retval = newBool;
+                        done = true;
+                    }
+                    else
+                        Console.WriteLine("Please enter true or false, or press return to leave this field.");
+                }
+            }
+
+            return retval;
+        }
+
+
+    #endregion
+
+#region Product Helper Methods
+
+    /// <summary>
+    /// Display products in the given style
+    /// </summary>
+    /// <param name="query">Products to display</param>
+    /// <param name="displayType">Style to display</param>
+    public static void consoleDisplayProducts(IEnumerable<Product> query, int displayType)
         {
             System.ConsoleColor saveConsoleColor = Console.ForegroundColor;
             foreach (var item in query)
@@ -106,9 +244,9 @@ namespace NW_EF_Console_MJH
                 if (displayType==NAME_DISPLAY)
                     Console.WriteLine($"{item.ProductName}");
                 else if (displayType==ID_DISPLAY)
-                    Console.WriteLine($"{item.ProductID}: {item.ProductName}");
+                    Console.WriteLine($"{item.ProductName}: id {item.ProductID}");
                 else if (displayType==CATEGORY_DISPLAY)
-                    Console.WriteLine($"{item.ProductID}: {item.Category.CategoryName}/{item.ProductName}");
+                    Console.WriteLine($"{item.ProductName}: id/category {item.ProductID}/{item.Category.CategoryName}");
                 if (item.Discontinued)
                     Console.ForegroundColor = saveConsoleColor;
             }
@@ -116,7 +254,7 @@ namespace NW_EF_Console_MJH
 
         #endregion
 
-        #region Product methods
+#region Product methods
 
         /// <summary>
         /// Display product menu; get and record user choice. Loop until q.
@@ -144,8 +282,9 @@ namespace NW_EF_Console_MJH
                 }
                 else if (choice == "3")
                 {
+                    // Display All Products Menu: 
+                    // User can decide if they want to see 1) All products 2) Discontinued products 3) Active products
                     Console.Clear();
-                    // Display products: menu so user can decide if they want to see 1) All products 2) Discontinued products 3) Active products
                     String[] displayProductsMenu;
                     displayProductsMenu = new string[5] { "---Display All Products Menu---", "1) Display All Products", "2) Display Discontinued Products", "3) Display Active Products", "\"q\" to go back" };
                     string pChoice;
@@ -194,9 +333,9 @@ namespace NW_EF_Console_MJH
         /// <returns>Product or null</returns>
         public static Product FindOneProduct(NWContext db)
         {
-            // TODO: Make sure each of the queries make sense for the type (lookup on single ID (#3) could be better).
-            int pId=-1; // Chosen product ID
-            // Search on Product Name, Category Name, Product ID
+            int pId=-1; // Chosen product ID; start with invalid id -1
+            // Display Single Product Search Menu:
+            // user can search on Product Name, Category Name, Product ID
             String[] productSearchMenu;
             productSearchMenu = new string[5] { "---Product Search Menu---", "1) Search on Product Name", "2) Search on Category Name", "3) Search on Product ID", "\"q\" to go back" };
             string choice;
@@ -217,18 +356,12 @@ namespace NW_EF_Console_MJH
                     {
                         var query = db.Products.Where(p => p.ProductName.ToLower().Contains(searchItem.ToLower())).OrderBy(n => n.ProductName);
                         Console.WriteLine($"{query.Count()} record(s) returned\n");
-                        if (query.Count() == 1)
-                            foreach (var item in query)
-                                pId = item.ProductID;
+                        consoleDisplayProducts(query, ID_DISPLAY);
+                        string itemChosen = getAnswer("Enter the id number of the product you want: ");
+                        if (int.TryParse(itemChosen, out int id))
+                            pId = id;
                         else
-                        {
-                            consoleDisplayProducts(query, ID_DISPLAY);
-                            string itemChosen = getAnswer("Enter the id number of the product you want: ");
-                            if (int.TryParse(itemChosen, out int id))
-                                pId = id;
-                            else
-                                Console.WriteLine("Invalid number entered.");
-                        }
+                            Console.WriteLine("Invalid number entered.");
                     }
                     else
                     {
@@ -245,22 +378,16 @@ namespace NW_EF_Console_MJH
                     {
                         var query = db.Products.Include("Category").Where(p => p.Category.CategoryName.ToLower().Contains(searchItem.ToLower())).OrderBy(n => n.Category.CategoryName);
                         Console.WriteLine($"{query.Count()} record(s) returned\n");
-                        if (query.Count() == 1)
-                            foreach (var item in query)
-                                pId = item.ProductID;
+                        consoleDisplayProducts(query, CATEGORY_DISPLAY);
+                        string itemChosen = getAnswer("Enter the id number of the product you want: ");
+                        if (int.TryParse(itemChosen, out int id))
+                            pId = id;
                         else
-                        {
-                            consoleDisplayProducts(query, CATEGORY_DISPLAY);
-                            string itemChosen = getAnswer("Enter the id number of the product you want: ");
-                            if (int.TryParse(itemChosen, out int id))
-                                pId = id;
-                            else
-                                logger.Info("Invalid number entered.");
-                        }
+                            logger.Info("Invalid number entered.");
                     }
                     else
                     {
-                        logger.Info($"No products found where product name contains {searchItem}.");
+                        logger.Info($"No products found where category name contains {searchItem}.");
                     }
                 }
                 else if (choice == "3")
@@ -268,15 +395,15 @@ namespace NW_EF_Console_MJH
                     string searchItem = getAnswer("Enter Product ID: ");
                     if (int.TryParse(searchItem, out int id))
                     {
-                        var query = db.Products.Where(p => p.ProductID.Equals(id));
-                        Console.WriteLine($"{query.Count()} record(s) returned\n");
-                        if (query.Count() == 1)
-                            foreach (var item in query)
-                                pId = item.ProductID;
+                        if (db.Products.Any(p => p.ProductID.Equals(pId)))
+                        {
+                            Product product = db.Products.Include("Category").FirstOrDefault(p => p.ProductID == pId);
+                            Console.WriteLine($"1 record returned\n");
+                            pId = product.ProductID;
+                        }
                     }
                     else
                         logger.Info($"No products found with product id {searchItem}.");
-
                 }
 
                 Console.WriteLine();
@@ -284,11 +411,11 @@ namespace NW_EF_Console_MJH
 
             if (pId > -1)
             {
+                // Double check if the user hasn't mistyped the ID
                 if (db.Products.Any(p => p.ProductID.Equals(pId)))
                 {
-                    // Double check if the user hasn't typed the ID wrong
                     logger.Info($"Returning product id {pId}.");
-                    Product product = db.Products.FirstOrDefault(p => p.ProductID == pId);
+                    Product product = db.Products.Include("Category").FirstOrDefault(p => p.ProductID == pId);
                     return product;
                 }
                 else
@@ -307,59 +434,14 @@ namespace NW_EF_Console_MJH
         public static void AddProduct(NWContext db)
         {
             Product product = new Product();
-            String answer = "";
             product.ProductName = getAnswer("Enter product name (required):");
-
-            answer = getAnswer("Enter the supplier ID (if any):");
-            if (answer == "")
-                product.SupplierId = null;
-            else if (int.TryParse(answer, out int id))
-                product.SupplierId = id;
-            else
-                logger.Error("Must be an integer or null.");
-
-            answer = getAnswer("Enter the category ID (if any):");
-            if (answer == "")
-                product.CategoryId = null;
-            else if (int.TryParse(answer, out int id))
-                product.CategoryId = id;
-            else
-                logger.Error("Must be an integer or null.");
-
-            product.QuantityPerUnit = getAnswer("Enter quantity per unit:");
-
-            answer = getAnswer("Enter the unit price:");
-            if (answer == "")
-                product.UnitPrice = null;
-            else if (Double.TryParse(answer, out double price))
-                product.UnitPrice = (decimal)price;
-            else
-                logger.Error("Must be a money value (0.00) or null.");
-
-            answer = getAnswer("Enter the units in stock (0-32767):");
-            if (answer == "")
-                product.UnitsInStock = null;
-            else if (short.TryParse(answer, out short qty))
-                product.UnitsInStock = qty;
-            else
-                logger.Error("Must be a short integer or null.");
-
-            answer = getAnswer("Enter the units on order (0-32767):");
-            if (answer == "")
-                product.UnitsOnOrder = null;
-            else if (short.TryParse(answer, out short qty))
-                product.UnitsOnOrder = qty;
-            else
-                logger.Error("Must be a short integer or null.");
-
-            answer = getAnswer("Enter the reorder level (0-32767):");
-            if (answer == "")
-                product.ReorderLevel = null;
-            else if (short.TryParse(answer, out short qty))
-                product.ReorderLevel = qty;
-            else
-                logger.Error("Must be a short integer or null.");
-
+            product.SupplierId = validateInt("Enter the supplier ID (if any). Press return for ", null);
+            product.CategoryId = validateInt("Enter the category ID (if any). Press return for ", null);
+            product.QuantityPerUnit = getAnswer("Enter quantity per unit. Press return for ");
+            product.UnitPrice = validateDecimal("Enter the unit price. Press return for ", null);
+            product.UnitsInStock = validateShort("Enter the units in stock (0-32767). Press return for ", null);
+            product.UnitsOnOrder = validateShort("Enter the units on order (0-32767). Press return for ", null);
+            product.ReorderLevel = validateShort("Enter the reorder level (0-32767). Press return for ", null);
             product.Discontinued = false;
 
             // Initializes a new instance of the ValidationContext class using the object, the service provider, and dictionary of service consumers.
@@ -386,8 +468,6 @@ namespace NW_EF_Console_MJH
                     {
                         db.AddProduct(product);
                         logger.Info($"Product {product.ProductName} added.");
-                        // TODO: If the product is edited immediately after Add, it produces an error. If the program is exited and then the item is edited, it's okay.
-                        // TODO: If the product is looked up by ID and displayed immediately after Add, it produces an error. If the program is exited and then the item is edited, it's okay.
                     }
                     catch (Exception ex)
                     {
@@ -412,8 +492,8 @@ namespace NW_EF_Console_MJH
         /// <param name="pChoice"></param>
         public static void DisplayAllProducts(NWContext db, String pChoice)
         {
-            // User decides if they want to see 1) All products 2) Discontinued products 3) Active products
-            // Discontinued products should be distinguished from active products
+            // User decides if they want to see 1) All-all products 2) All Discontinued products 3) All Active products
+            // Discontinued products should are distinguished from active products by printing in dark red
             if (pChoice=="1")
             {
                 // Display all products
@@ -444,13 +524,11 @@ namespace NW_EF_Console_MJH
         public static void EditProduct(NWContext db)
         {
             // Find and display the product to edit
-            Product p = FindAndDisplayOneProduct(db);
-            
+            Product p = FindAndDisplayOneProduct(db);            
             if (p!=null)
             {
-                // Edit the product
+                // Found. Get updated information
                 Product updatedProduct = new Product();
-
                 EditProductFields(p, updatedProduct);
 
                 // Validate updated product
@@ -506,30 +584,14 @@ namespace NW_EF_Console_MJH
         public static void EditProductFields(Product p, Product updatedProduct)
         {
 
-            // TODO: Both here and add product fields is messy. There has to be a way to turn into a function.
             // Update product name
             updatedProduct.ProductName = p.ProductName;
             String answer = getAnswer($"Enter new product name or press return to keep { p.ProductName})");
             if (answer != "")
                 updatedProduct.ProductName = answer;
 
-            // Update supplier ID
-            updatedProduct.SupplierId = p.SupplierId;
-            answer = getAnswer($"Enter new supplier ID or press return to keep {p.SupplierId}");
-            if (answer != "")
-                if (int.TryParse(answer, out int id))
-                    updatedProduct.SupplierId = id;
-                else
-                    logger.Error("Supplier ID must be an integer or null. Not updated.");
-
-            // Update category ID
-            updatedProduct.CategoryId = p.CategoryId;
-            answer = getAnswer($"Enter new category ID or press return to keep {p.CategoryId}");
-            if (answer != "")
-                if (int.TryParse(answer, out int id))
-                    updatedProduct.CategoryId = id;
-                else
-                    logger.Error("Category ID must be an integer or null. Not updated.");
+            updatedProduct.SupplierId = validateInt($"Enter new supplier ID or press return to keep {p.SupplierId}", p.SupplierId);
+            updatedProduct.CategoryId = validateInt($"Enter new category ID or press return to keep {p.CategoryId}", p.CategoryId);
 
             // Update quantity per unit
             updatedProduct.QuantityPerUnit = p.QuantityPerUnit;
@@ -537,52 +599,14 @@ namespace NW_EF_Console_MJH
             if (answer != "")
                 updatedProduct.QuantityPerUnit = answer;
 
-            updatedProduct.UnitPrice = p.UnitPrice;
-            answer = getAnswer($"Enter new unit price or press return to keep {p.UnitPrice,10:c2}");
-            if (answer != "")
-                if (Double.TryParse(answer, out double price))
-                    updatedProduct.UnitPrice = (decimal)price;
-                else
-                    logger.Error("Unit price must be a money value (0.00) or null. Not update.");
-
-            // Update units in stock
-            updatedProduct.UnitsInStock = p.UnitsInStock;
-            answer = getAnswer($"Enter new units in stock (0-32767) or press return to keep {p.UnitsInStock}");
-            if (answer != "")
-                if (short.TryParse(answer, out short qty))
-                    updatedProduct.UnitsInStock = qty;
-                else
-                    logger.Error("Units in stock must be a short integer or null. Not updated.");
-
-            // Update units on order
-            updatedProduct.UnitsOnOrder = p.UnitsOnOrder;
-            answer = getAnswer($"Enter new units on order (0-32767) or press return to keep {p.UnitsOnOrder}");
-            if (answer != "")
-                if (short.TryParse(answer, out short qty))
-                    updatedProduct.UnitsOnOrder = qty;
-                else
-                    logger.Error("Units on order must be a short integer or null. Not updated.");
-
-            // Update reorder level
-            updatedProduct.ReorderLevel = p.ReorderLevel;
-            answer = getAnswer($"Enter new reorder level (0-32767) or press return to keep {p.ReorderLevel}");
-            if (answer != "")
-                if (short.TryParse(answer, out short qty))
-                    updatedProduct.ReorderLevel = qty;
-                else
-                    logger.Error("Reorder level must be a short integer or null. Not updated.");
-
-            // Update discontinued flag
-            updatedProduct.Discontinued = p.Discontinued;
-            answer = getAnswer($"Enter new discontinued flag or press return to keep {p.Discontinued}");
-            if (answer != "")
-                if (Boolean.TryParse(answer, out bool d))
-                    updatedProduct.Discontinued = d;
-                else
-                    logger.Error("Discontinued must be true or false. Not updated.");
+            updatedProduct.UnitPrice = validateDecimal($"Enter new unit price or press return to keep {p.UnitPrice,10:c2}", p.UnitPrice);
+            updatedProduct.UnitsInStock = validateShort($"Enter new units in stock (0-32767) or press return to keep {p.UnitsInStock}", p.UnitsInStock);
+            updatedProduct.UnitsOnOrder = validateShort($"Enter new units on order (0-32767) or press return to keep {p.UnitsOnOrder}", p.UnitsOnOrder);
+            updatedProduct.ReorderLevel = validateShort($"Enter new reorder level (0-32767) or press return to keep {p.ReorderLevel}", p.ReorderLevel);
+            updatedProduct.Discontinued = validateBoolean($"Enter new discontinued flag or press return to keep {p.Discontinued}", p.Discontinued);
 
         }
-   
+        
         #endregion product methods
 
         // End Program; End Namespace
