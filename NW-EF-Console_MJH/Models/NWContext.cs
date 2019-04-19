@@ -21,7 +21,22 @@ namespace NW_EF_Console_MJH.Models
             this.SaveChanges();
         }
 
-        // public method
+        public void UpdateProduct(Product updatedProduct)
+        {
+            Product product = this.Products.Find(updatedProduct.ProductID);
+            product.ProductName = updatedProduct.ProductName;
+            product.SupplierId = updatedProduct.SupplierId;
+            product.CategoryId = updatedProduct.CategoryId;
+            product.QuantityPerUnit = updatedProduct.QuantityPerUnit;
+            product.UnitPrice = updatedProduct.UnitPrice;
+            product.UnitsInStock = updatedProduct.UnitsInStock;
+            product.UnitsOnOrder = updatedProduct.UnitsOnOrder;
+            product.ReorderLevel = updatedProduct.ReorderLevel;
+            product.Discontinued = updatedProduct.Discontinued;
+            this.SaveChanges();
+        }
+
+        // Display one product
         public string DisplayAProduct(Product product)
         {
             return $"ID:\t\t {product.ProductID}\n" +
@@ -29,7 +44,7 @@ namespace NW_EF_Console_MJH.Models
                 $"Supplier ID:\t {product.SupplierId}\n" +
                 $"Category ID:\t {product.CategoryId}: {product.Category.CategoryName}\n" +
                 $"Quantity/Unit:\t {product.QuantityPerUnit}\n" +
-                $"Unit Price:\t {product.UnitPrice}\n" +
+                $"Unit Price:\t {product.UnitPrice,10:c2}\n" +
                 $"Units in Stock:\t {product.UnitsInStock}\n"+
                 $"Units on Order:\t {product.UnitsOnOrder}\n"+
                 $"Reorder Level:\t {product.ReorderLevel}\n"+
