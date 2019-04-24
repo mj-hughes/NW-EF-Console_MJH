@@ -275,19 +275,40 @@ namespace NW_EF_Console_MJH
 
 
     #endregion
+        
+#region Category Helper Methods
 
+        /// <summary>
+        /// Displays categories either name/description or with id.
+        /// </summary>
+        /// <param name="query">query holding catetories</param>
+        /// <param name="displayType">NAME_DISPLAY or ID_DISPLAY</param>
+        public static void consoleDisplayCategories(IEnumerable<Category> query, int displayType)
+        {
+            foreach (var q in query)
+            {
+                if (displayType == NAME_DISPLAY)
+                    Console.WriteLine($"{q.CategoryName}: {q.Description}");
+                else if (displayType == ID_DISPLAY)
+                    Console.WriteLine($"{q.CategoryName}: id {q.CategoryId}");
+            }
+        }
+
+#endregion
+        
 #region Product Helper Methods
 
-    /// <summary>
-    /// Display products in the given style
-    /// </summary>
-    /// <param name="query">Products to display</param>
-    /// <param name="displayType">Style to display</param>
-    public static void consoleDisplayProducts(IEnumerable<Product> query, int displayType)
+        /// <summary>
+        /// Display products in the given style
+        /// </summary>
+        /// <param name="query">Products to display</param>
+        /// <param name="displayType">Style to display</param>
+        public static void consoleDisplayProducts(IEnumerable<Product> query, int displayType)
         {
             System.ConsoleColor saveConsoleColor = Console.ForegroundColor;
             foreach (var item in query)
             {
+                // TODO: Note the DarkRed console color for full points
                 if (item.Discontinued)
                     Console.ForegroundColor = ConsoleColor.DarkRed;
                 if (displayType==NAME_DISPLAY)
@@ -339,6 +360,7 @@ namespace NW_EF_Console_MJH
                 else if (choice == "5")
                 {
                     // TODO: Display a single category and its active products (Category Name, Product Name)
+                    DisplayACategoryWithProducts(db);
                 }
                 Console.WriteLine();
             } while (choice.ToLower() != "q");
@@ -403,6 +425,7 @@ namespace NW_EF_Console_MJH
             // Display all categories
             var query = db.Categories.OrderBy(c => c.CategoryName);
             Console.WriteLine($"{query.Count()} record(s) returned\n");
+            consoleDisplayCategories(query, NAME_DISPLAY);
             foreach (var item in query)
             {
                 Console.WriteLine($"{item.CategoryName}: {item.Description}");
@@ -412,7 +435,7 @@ namespace NW_EF_Console_MJH
         /// <summary>
         /// Display all categories and their related active products
         /// </summary>
-        /// <param name="db"></param>
+        /// <param name="db">database context</param>
         public static void DisplayAllCategoriesWithProducts(NWContext db)
         {
             var cats = db.Categories.Include("Products").OrderBy(c=> c.CategoryName);
@@ -434,7 +457,57 @@ namespace NW_EF_Console_MJH
             }
         }
 
+        public static void DisplayACategoryWithProducts(NWContext db)
+        {
+            int cId = -1;
+            // Ask user to pick Category ID based on Category Name search.
+            string searchItem = getAnswer("Enter all or part of a category name (not case sensitive): ");
 
+            if (db.Categories.Any(c => c.CategoryName.ToLower().Contains(searchItem.ToLower())))
+            {
+                var query = db.Categories.Where(c => c.CategoryName.ToLower().Contains(searchItem.ToLower())).OrderBy(c => c.CategoryName);
+                Console.WriteLine($"{query.Count()} record(s) returned\n");
+                consoleDisplayCategories(query, ID_DISPLAY);
+                string itemChosen = getAnswer("Enter the id number of the category you want: ");
+                if (int.TryParse(itemChosen, out int id))
+                    cId = id;
+                else
+                    logger.Info("Invalid number entered.");
+            }
+            else
+            {
+                logger.Info($"No categories found where name contains {searchItem}.");
+            }
+
+            if (cId > -1)
+            {
+                // Double check if the user hasn't mistyped the ID
+                if (db.Categories.Any(c => c.CategoryId.Equals(cId)))
+                {
+                    // TODO: Maybe this is something for full points
+                    // String sql = db.Categories.Include("Products").Sql;
+                    // Console.WriteLine(sql);
+                    Category cat = db.Categories.Include("Products").FirstOrDefault(c => c.CategoryId.Equals(cId));
+                    // Can also use Category cat = db.Categories.Include("Products").FirstOrDefault(c => c.CategoryId == cId);
+                    if (cat.Products.Count() == 0)
+                        Console.WriteLine("\t<--no products-->");
+                    else
+                    {
+                        Console.WriteLine($"{cat.CategoryName}");
+                        IEnumerable<Product> products = cat.Products.OrderBy(p => p.ProductName);
+                        foreach (Product p in products)
+                        {
+                            if (!p.Discontinued)
+                                Console.WriteLine($"\t{p.ProductName}");
+                        }
+                    }
+                }
+                else
+                    Console.WriteLine($"Error finding category id {cId}");
+
+
+            }
+        }
 
         #endregion
 
@@ -496,7 +569,7 @@ namespace NW_EF_Console_MJH
         /// <summary>
         /// Find one product; display it.
         /// </summary>
-        /// <param name="db"></param>
+        /// <param name="db">database context</param>
         /// <returns></returns>
         public static Product FindAndDisplayOneProduct(NWContext db)
         {
@@ -614,7 +687,7 @@ namespace NW_EF_Console_MJH
         /// <summary>
         /// Add a new product. Make sure the product name is unique.
         /// </summary>
-        /// <param name="db"></param>
+        /// <param name="db">database context</param>
         public static void AddProduct(NWContext db)
         {
             // TODO: How do I validate CategoryID? (eg 99 doesn't exist, so adding a product with category produces a database error and doesn't add).
@@ -673,8 +746,8 @@ namespace NW_EF_Console_MJH
         /// <summary>
         /// Display all products: All-all, all-discontinued, all-active
         /// </summary>
-        /// <param name="db"></param>
-        /// <param name="pChoice"></param>
+        /// <param name="db">database context</param>
+        /// <param name="pChoice">product display choice (1-all; 2-discontinued; 3-active)</param>
         public static void DisplayAllProducts(NWContext db, String pChoice)
         {
             // User decides if they want to see 1) All-all products 2) All Discontinued products 3) All Active products
@@ -705,7 +778,7 @@ namespace NW_EF_Console_MJH
         /// <summary>
         /// Find one product, allow user to change the fields, validate, and save.
         /// </summary>
-        /// <param name="db"></param>
+        /// <param name="db">database context</param>
         public static void EditProduct(NWContext db)
         {
             // Find and display the product to edit
