@@ -36,7 +36,7 @@ namespace NW_EF_Console_MJH
                     }
                     else if (choice=="2")
                     {
-
+                        CategoryMenu(db);
                     }
                     Console.WriteLine();
 
@@ -113,12 +113,15 @@ namespace NW_EF_Console_MJH
                 {
                     if (int.TryParse(answer, out int newInt))
                     {
-                        retval = newInt;
-                        done = true;
+                        if (newInt>=0)
+                        {
+                            retval = newInt;
+                            done = true;
+                        }
                     }
-                    else
-                        Console.WriteLine("Please enter an integer or press return to leave this field.");
                 }
+                if (!done)
+                    Console.WriteLine("Please enter an integer 0 or greater or press return to leave this field.");
             }
 
             return retval;
@@ -146,12 +149,15 @@ namespace NW_EF_Console_MJH
                 {
                     if (Decimal.TryParse(answer, out decimal newDecimal))
                     {
-                        retval = newDecimal;
-                        done = true;
+                        if (newDecimal>=0)
+                        {
+                            retval = newDecimal;
+                            done = true;
+                        }
                     }
-                    else
-                        Console.WriteLine("Please enter a money value or press return to leave this field.");
                 }
+                if (!done)
+                    Console.WriteLine("Please enter a money value 0 or greater or press return to leave this field.");
             }
 
             return retval;
@@ -179,12 +185,15 @@ namespace NW_EF_Console_MJH
                 {
                     if (short.TryParse(answer, out short newShort))
                     {
-                        retval = newShort;
-                        done = true;
+                        if (newShort>=0)
+                        {
+                            retval = newShort;
+                            done = true;
+                        }
                     }
-                    else
-                        Console.WriteLine("Please enter a number or press return to leave this field.");
                 }
+                if (!done)
+                    Console.WriteLine("Please enter a number between 0 and 32757 or press return to leave this field.");
             }
 
             return retval;
@@ -254,7 +263,47 @@ namespace NW_EF_Console_MJH
 
         #endregion
 
-#region Product methods
+        #region Category methods
+
+        public static void CategoryMenu(NWContext db)
+        {
+            String[] categoryMenu;
+            categoryMenu = new string[7] { "===CATEGORY MENU===", "1) Add a New Category", "2) Edit a Category", "3) Display All Categories", "4) Display All Categories and Their Active Products", "5) Display a Category and Its Products", "\"q\" to go back" };
+            string choice;
+            do
+            {
+                DisplayMenu(categoryMenu); // Display the menu
+                choice = Console.ReadLine(); // Get the user's input
+                LogMenuChoice(categoryMenu, choice); // Log the input
+                Console.Clear();
+                // Select menu action based on choice
+                if (choice == "1")
+                {
+                    // TODO: Add a category
+                }
+                else if (choice == "2")
+                {
+                    // TODO: Edit a category
+                }
+                else if (choice == "3")
+                {
+                    // TODO: Display All Categories (Category Name and Description)
+                }
+                else if (choice == "4")
+                {
+                    // TODO: Display all categories and their active products (Category Name, Product Name)
+                }
+                else if (choice == "5")
+                {
+                    // TODO: Display a single category and its active products (Category Name, Product Name)
+                }
+                Console.WriteLine();
+            } while (choice.ToLower() != "q");
+
+        }
+        #endregion
+
+        #region Product methods
 
         /// <summary>
         /// Display product menu; get and record user choice. Loop until q.
