@@ -87,7 +87,47 @@ namespace NW_EF_Console_MJH
             Console.WriteLine(prompt);
             return Console.ReadLine();
         }
+        /// <summary>
+        /// Overload of getAnswer to include field data
+        /// </summary>
+        /// <param name="prompt"></param>
+        /// <param name="currval"></param>
+        /// <returns></returns>
+        public static string getAnswer(String prompt, String currval)
+        {
+            if (currval == null)
+                prompt = prompt + "null";
+            else if (currval == "")
+                prompt += "blank";
+            Console.WriteLine(prompt);
+            return Console.ReadLine();
+        }
+        /// <summary>
+        /// Overload of getAnswer for required strings
+        /// </summary>
+        /// <param name="prompt"></param>
+        /// <param name="currval"></param>
+        /// <param name="req"></param>
+        /// <returns></returns>
+        public static string getAnswer(String prompt, bool req)
+        {
+            String retval = "";
+            retval=getAnswer(prompt);
+            if (req && (retval==""))
+            {
+                bool done = false;
+                while (!done)
+                {
+                    Console.WriteLine("Value is required.");
+                    Console.WriteLine(prompt);
+                    retval = Console.ReadLine();
+                    if (retval != "")
+                        done = true;
+                }
+            }
+            return retval;
 
+        }
         //TODO: Is there a way to combine all these validations into one routine?
         //TODO: Would it be better to call the data annotation validation after each field?
 
@@ -212,7 +252,7 @@ namespace NW_EF_Console_MJH
 
             bool retval = currval;
             if (currval == null)
-                prompt = prompt + "null";
+                prompt += "null";
             while (!done)
             {
                 string answer = getAnswer(prompt);
@@ -263,7 +303,7 @@ namespace NW_EF_Console_MJH
 
         #endregion
 
-        #region Category methods
+#region Category methods
 
         public static void CategoryMenu(NWContext db)
         {
@@ -279,7 +319,8 @@ namespace NW_EF_Console_MJH
                 // Select menu action based on choice
                 if (choice == "1")
                 {
-                    // TODO: Add a category
+                    // Add a category
+                    AddCategory(db);
                 }
                 else if (choice == "2")
                 {
@@ -287,7 +328,8 @@ namespace NW_EF_Console_MJH
                 }
                 else if (choice == "3")
                 {
-                    // TODO: Display All Categories (Category Name and Description)
+                    // Display All Categories (Category Name and Description)
+                    DisplayAllCategories(db);
                 }
                 else if (choice == "4")
                 {
@@ -301,6 +343,74 @@ namespace NW_EF_Console_MJH
             } while (choice.ToLower() != "q");
 
         }
+
+        /// <summary>
+        /// Add a category
+        /// </summary>
+        /// <param name="db">database context</param>
+        public static void AddCategory(NWContext db)
+        {
+            Category category = new Category();
+
+            category.CategoryName = getAnswer("Enter category name (required): ",  true);
+            category.Description = getAnswer("Enter category description: ");
+            
+            ValidationContext context = new ValidationContext(category, null, null); // New instance of ValidationContext using category.
+            List<ValidationResult> results = new List<ValidationResult>(); // Store the errors in a list
+
+            var isValid = Validator.TryValidateObject(category, context, results, true);
+            if (isValid)
+            {
+                // check that category name hasn't already been used
+                if (db.Categories.Any(c=>c.CategoryName == category.CategoryName))
+                {
+                    // generate validation error
+                    isValid = false;
+                    results.Add(new ValidationResult("Name exists", new string[] { "CategoryName" }));
+                }
+                else
+                {
+                    logger.Info("Validation passed");
+
+                    try
+                    {
+                        db.AddCategory(category);
+                        logger.Info($"Category {category.CategoryName} added.");
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.Error(ex.Message);
+                    }
+                }
+            }
+            if (!isValid)
+            {
+                foreach (var result in results)
+                {
+                    logger.Error($"{result.MemberNames.First()} : {result.ErrorMessage}");
+                }
+            }
+
+        }
+
+        /// <summary>
+        /// Display all categories
+        /// </summary>
+        /// <param name="db">database context</param>
+        public static void DisplayAllCategories(NWContext db)
+        {
+            // Display all categories
+            var query = db.Categories.OrderBy(c => c.CategoryName);
+            Console.WriteLine($"{query.Count()} record(s) returned\n");
+            foreach (var item in query)
+            {
+                Console.WriteLine($"{item.CategoryName}: {item.Description}");
+            }
+        }
+
+
+
+
         #endregion
 
         #region Product methods
@@ -482,11 +592,12 @@ namespace NW_EF_Console_MJH
         /// <param name="db"></param>
         public static void AddProduct(NWContext db)
         {
+            // TODO: How do I validate CategoryID? (eg 99 doesn't exist, so adding a product with category produces a database error and doesn't add).
             Product product = new Product();
-            product.ProductName = getAnswer("Enter product name (required):");
+            product.ProductName = getAnswer("Enter product name (required):", true);
             product.SupplierId = validateInt("Enter the supplier ID (if any). Press return for ", null);
             product.CategoryId = validateInt("Enter the category ID (if any). Press return for ", null);
-            product.QuantityPerUnit = getAnswer("Enter quantity per unit. Press return for ");
+            product.QuantityPerUnit = getAnswer("Enter quantity per unit. Press return for ", "");
             product.UnitPrice = validateDecimal("Enter the unit price. Press return for ", null);
             product.UnitsInStock = validateShort("Enter the units in stock (0-32767). Press return for ", null);
             product.UnitsOnOrder = validateShort("Enter the units on order (0-32767). Press return for ", null);
@@ -635,7 +746,7 @@ namespace NW_EF_Console_MJH
 
             // Update product name
             updatedProduct.ProductName = p.ProductName;
-            String answer = getAnswer($"Enter new product name or press return to keep { p.ProductName})");
+            String answer = getAnswer($"Enter new product name or press return to keep { p.ProductName}", p.ProductName);
             if (answer != "")
                 updatedProduct.ProductName = answer;
 
@@ -644,7 +755,7 @@ namespace NW_EF_Console_MJH
 
             // Update quantity per unit
             updatedProduct.QuantityPerUnit = p.QuantityPerUnit;
-            answer = getAnswer($"Enter new quantity per unit or press return to keep {p.QuantityPerUnit}");
+            answer = getAnswer($"Enter new quantity per unit or press return to keep {p.QuantityPerUnit}", p.QuantityPerUnit);
             if (answer != "")
                 updatedProduct.QuantityPerUnit = answer;
 
