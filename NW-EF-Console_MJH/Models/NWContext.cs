@@ -21,6 +21,14 @@ namespace NW_EF_Console_MJH.Models
             this.SaveChanges();
         }
 
+        public void UpdateCategory(Category updatedCategory)
+        {
+            Category category = this.Categories.Find(updatedCategory.CategoryId);
+            category.CategoryName = updatedCategory.CategoryName;
+            category.Description = updatedCategory.Description;
+            this.SaveChanges();
+        }
+
         public void UpdateProduct(Product updatedProduct)
         {
             Product product = this.Products.Find(updatedProduct.ProductID);

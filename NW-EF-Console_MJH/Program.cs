@@ -11,7 +11,9 @@ namespace NW_EF_Console_MJH
         private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
         const int NAME_DISPLAY= 1;
         const int ID_DISPLAY = 2;
-        const int CATEGORY_DISPLAY = 3;
+        const int WITH_CATEGORY_DISPLAY = 3;
+        const int WITH_PRODUCT_DISPLAY = 3;
+        const int NOT_FOUND = -1;
         static void Main(string[] args)
         {
             logger.Info("Program started");
@@ -274,15 +276,15 @@ namespace NW_EF_Console_MJH
         }
 
 
-    #endregion
-        
-#region Category Helper Methods
+        #endregion
+
+        #region Category Helper Methods
 
         /// <summary>
         /// Displays categories either name/description or with id.
         /// </summary>
         /// <param name="query">query holding catetories</param>
-        /// <param name="displayType">NAME_DISPLAY or ID_DISPLAY</param>
+        /// <param name="displayType">NAME_DISPLAY, ID_DISPLAY, or WITH_PRODUCT_DISPLAY</param>
         public static void consoleDisplayCategories(IEnumerable<Category> query, int displayType)
         {
             foreach (var q in query)
@@ -291,6 +293,21 @@ namespace NW_EF_Console_MJH
                     Console.WriteLine($"{q.CategoryName}: {q.Description}");
                 else if (displayType == ID_DISPLAY)
                     Console.WriteLine($"{q.CategoryName}: id {q.CategoryId}");
+                else if (displayType == WITH_PRODUCT_DISPLAY)
+                {
+                    Console.WriteLine(q.CategoryName);
+                    if (q.Products.Count() == 0)
+                        Console.WriteLine("\t<--no products-->");
+                    else
+                    {
+                        IEnumerable<Product> products = q.Products.OrderBy(p => p.ProductName);
+                        foreach (Product p in products)
+                        {
+                            if (!p.Discontinued)
+                                Console.WriteLine($"\t{p.ProductName}");
+                        }
+                    }
+                }
             }
         }
 
@@ -315,7 +332,7 @@ namespace NW_EF_Console_MJH
                     Console.WriteLine($"{item.ProductName}");
                 else if (displayType==ID_DISPLAY)
                     Console.WriteLine($"{item.ProductName}: id {item.ProductID}");
-                else if (displayType==CATEGORY_DISPLAY)
+                else if (displayType==WITH_CATEGORY_DISPLAY)
                     Console.WriteLine($"{item.ProductName}: id/category {item.ProductID}/{item.Category.CategoryName}");
                 if (item.Discontinued)
                     Console.ForegroundColor = saveConsoleColor;
@@ -345,7 +362,8 @@ namespace NW_EF_Console_MJH
                 }
                 else if (choice == "2")
                 {
-                    // TODO: Edit a category
+                    // Edit a category
+                    EditCategory(db);
                 }
                 else if (choice == "3")
                 {
@@ -359,7 +377,7 @@ namespace NW_EF_Console_MJH
                 }
                 else if (choice == "5")
                 {
-                    // TODO: Display a single category and its active products (Category Name, Product Name)
+                    // Display a single category and its active products (Category Name, Product Name)
                     DisplayACategoryWithProducts(db);
                 }
                 Console.WriteLine();
@@ -417,49 +435,91 @@ namespace NW_EF_Console_MJH
         }
 
         /// <summary>
-        /// Display all categories
+        /// Prompt user for changes to the category fields
         /// </summary>
-        /// <param name="db">database context</param>
-        public static void DisplayAllCategories(NWContext db)
+        /// <param name="c">curent category information</param>
+        /// <param name="updatedCategory">changed category information</param>
+        public static void EditCategoryFields(Category c, Category updatedCategory)
         {
-            // Display all categories
-            var query = db.Categories.OrderBy(c => c.CategoryName);
-            Console.WriteLine($"{query.Count()} record(s) returned\n");
-            consoleDisplayCategories(query, NAME_DISPLAY);
-            foreach (var item in query)
-            {
-                Console.WriteLine($"{item.CategoryName}: {item.Description}");
-            }
+            // Update category name
+            updatedCategory.CategoryName = c.CategoryName;
+            String answer = getAnswer($"Enter new category name or press return to keep {c.CategoryName}", c.CategoryName);
+            if (answer != "")
+                updatedCategory.CategoryName = answer;
+
+            // Update description
+            updatedCategory.Description = c.Description;
+            answer = getAnswer($"Enter new category name or press return to keep {c.Description}", c.Description);
+            if (answer != "")
+                updatedCategory.Description = answer;
         }
 
         /// <summary>
-        /// Display all categories and their related active products
+        /// Edit a category
         /// </summary>
         /// <param name="db">database context</param>
-        public static void DisplayAllCategoriesWithProducts(NWContext db)
+        public static void EditCategory(NWContext db)
         {
-            var cats = db.Categories.Include("Products").OrderBy(c=> c.CategoryName);
-            Console.WriteLine($"{cats.Count()} categories returned.");
-            foreach (Category c in cats)
+            int cId = findACategory(db);
+            if (cId > NOT_FOUND)
             {
-                Console.WriteLine(c.CategoryName);
-                if (c.Products.Count() == 0)
-                    Console.WriteLine("\t<--no products-->");
-                else
+                var category = db.Categories.Find(cId);
+//                var category = db.Categories.FirstOrDefault(c => c.CategoryId.Equals(cId));
+                if (category!=null)
                 {
-                    IEnumerable<Product> products = c.Products.OrderBy(p=>p.ProductName);
-                    foreach (Product p in products)
+                    // Found. Get updated information
+                    Category updatedCategory = new Category();
+                    EditCategoryFields(category, updatedCategory);
+
+                    // Validate updated category
+                    ValidationContext context = new ValidationContext(updatedCategory, null, null);
+                    List<ValidationResult> results = new List<ValidationResult>(); // Store the errors in a list
+
+                    var isValid = Validator.TryValidateObject(updatedCategory, context, results, true);
+                    if (isValid)
                     {
-                        if (!p.Discontinued)
-                            Console.WriteLine($"\t{p.ProductName}");
+                        // If the category name has changed, check that it's unique
+                        if (updatedCategory.CategoryName != category.CategoryName)
+                        {
+                            if (db.Categories.Any(c => c.CategoryName== updatedCategory.CategoryName))
+                            {
+                                // generate validation error
+                                isValid = false;
+                                results.Add(new ValidationResult("Name exists", new string[] { "CategoryName" }));
+                            }
+                        }
+
+                        if (isValid)
+                        {
+                            logger.Info("Validation passed");
+
+                            try
+                            {
+                                updatedCategory.CategoryId= category.CategoryId;
+                                db.UpdateCategory(updatedCategory);
+                                logger.Info($"Category {category.CategoryId}: {updatedCategory.CategoryName} updated.");
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.Error(ex.Message);
+                            }
+                        }
                     }
+                    if (!isValid)
+                    {
+                        foreach (var result in results)
+                        {
+                            logger.Error($"{result.MemberNames.First()} : {result.ErrorMessage}");
+                        }
+                    }
+
                 }
             }
         }
 
-        public static void DisplayACategoryWithProducts(NWContext db)
+        public static int findACategory(NWContext db)
         {
-            int cId = -1;
+            int cId = NOT_FOUND;
             // Ask user to pick Category ID based on Category Name search.
             string searchItem = getAnswer("Enter all or part of a category name (not case sensitive): ");
 
@@ -479,33 +539,55 @@ namespace NW_EF_Console_MJH
                 logger.Info($"No categories found where name contains {searchItem}.");
             }
 
-            if (cId > -1)
+            if (cId > NOT_FOUND)
             {
                 // Double check if the user hasn't mistyped the ID
-                if (db.Categories.Any(c => c.CategoryId.Equals(cId)))
+                if (!db.Categories.Any(c => c.CategoryId.Equals(cId)))
                 {
-                    // TODO: Maybe this is something for full points
-                    // String sql = db.Categories.Include("Products").Sql;
-                    // Console.WriteLine(sql);
-                    Category cat = db.Categories.Include("Products").FirstOrDefault(c => c.CategoryId.Equals(cId));
-                    // Can also use Category cat = db.Categories.Include("Products").FirstOrDefault(c => c.CategoryId == cId);
-                    if (cat.Products.Count() == 0)
-                        Console.WriteLine("\t<--no products-->");
-                    else
-                    {
-                        Console.WriteLine($"{cat.CategoryName}");
-                        IEnumerable<Product> products = cat.Products.OrderBy(p => p.ProductName);
-                        foreach (Product p in products)
-                        {
-                            if (!p.Discontinued)
-                                Console.WriteLine($"\t{p.ProductName}");
-                        }
-                    }
-                }
-                else
                     Console.WriteLine($"Error finding category id {cId}");
+                    cId = NOT_FOUND;
+                }
+            }
+            return cId;
+        }
 
+        /// <summary>
+                /// Display all categories
+                /// </summary>
+                /// <param name="db">database context</param>
+        public static void DisplayAllCategories(NWContext db)
+        {
+            // Display all categories
+            var query = db.Categories.OrderBy(c => c.CategoryName);
+            Console.WriteLine($"{query.Count()} record(s) returned\n");
+            consoleDisplayCategories(query, NAME_DISPLAY);
+        }
 
+        /// <summary>
+        /// Display all categories and their related active products
+        /// </summary>
+        /// <param name="db">database context</param>
+        public static void DisplayAllCategoriesWithProducts(NWContext db)
+        {
+            var category = db.Categories.Include("Products").OrderBy(c=> c.CategoryName);
+            Console.WriteLine($"{category.Count()} categories returned.");
+            consoleDisplayCategories(category, WITH_PRODUCT_DISPLAY);
+        }
+
+        /// <summary>
+        /// Find and display a category with its active products
+        /// </summary>
+        /// <param name="db">database context</param>
+        public static void DisplayACategoryWithProducts(NWContext db)
+        {
+            int cId = findACategory(db);
+            if (cId > NOT_FOUND)
+            {
+                var cat = db.Categories.Include("Products").Where(c => c.CategoryId.Equals(cId));
+                consoleDisplayCategories(cat, WITH_PRODUCT_DISPLAY);
+                // TODO: Maybe this is something for full points
+                // String sql = db.Categories.Include("Products").Sql;
+                // Console.WriteLine(sql);
             }
         }
 
@@ -590,7 +672,7 @@ namespace NW_EF_Console_MJH
         /// <returns>Product or null</returns>
         public static Product FindOneProduct(NWContext db)
         {
-            int pId=-1; // Chosen product ID; start with invalid id -1
+            int pId= NOT_FOUND; // Chosen product ID; start with invalid id NOT_FOUND
             // Display Single Product Search Menu:
             // user can search on Product Name, Category Name, Product ID
             String[] productSearchMenu;
@@ -635,7 +717,7 @@ namespace NW_EF_Console_MJH
                     {
                         var query = db.Products.Include("Category").Where(p => p.Category.CategoryName.ToLower().Contains(searchItem.ToLower())).OrderBy(n => n.Category.CategoryName);
                         Console.WriteLine($"{query.Count()} record(s) returned\n");
-                        consoleDisplayProducts(query, CATEGORY_DISPLAY);
+                        consoleDisplayProducts(query, WITH_CATEGORY_DISPLAY);
                         string itemChosen = getAnswer("Enter the id number of the product you want: ");
                         if (int.TryParse(itemChosen, out int id))
                             pId = id;
@@ -664,9 +746,9 @@ namespace NW_EF_Console_MJH
                 }
 
                 Console.WriteLine();
-            } while ((choice.ToLower()) != "q" && (pId==-1));
+            } while ((choice.ToLower()) != "q" && (pId == NOT_FOUND));
 
-            if (pId > -1)
+            if (pId > NOT_FOUND)
             {
                 // Double check if the user hasn't mistyped the ID
                 if (db.Products.Any(p => p.ProductID.Equals(pId)))
