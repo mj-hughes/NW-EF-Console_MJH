@@ -333,7 +333,8 @@ namespace NW_EF_Console_MJH
                 }
                 else if (choice == "4")
                 {
-                    // TODO: Display all categories and their active products (Category Name, Product Name)
+                    // Display all categories and their active products (Category Name, Product Name)
+                    DisplayAllCategoriesWithProducts(db);
                 }
                 else if (choice == "5")
                 {
@@ -408,6 +409,30 @@ namespace NW_EF_Console_MJH
             }
         }
 
+        /// <summary>
+        /// Display all categories and their related active products
+        /// </summary>
+        /// <param name="db"></param>
+        public static void DisplayAllCategoriesWithProducts(NWContext db)
+        {
+            var cats = db.Categories.Include("Products").OrderBy(c=> c.CategoryName);
+            Console.WriteLine($"{cats.Count()} categories returned.");
+            foreach (Category c in cats)
+            {
+                Console.WriteLine(c.CategoryName);
+                if (c.Products.Count() == 0)
+                    Console.WriteLine("\t<--no products-->");
+                else
+                {
+                    IEnumerable<Product> products = c.Products.OrderBy(p=>p.ProductName);
+                    foreach (Product p in products)
+                    {
+                        if (!p.Discontinued)
+                            Console.WriteLine($"\t{p.ProductName}");
+                    }
+                }
+            }
+        }
 
 
 
