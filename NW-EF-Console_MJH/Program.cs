@@ -83,7 +83,7 @@ namespace NW_EF_Console_MJH
         /// Turns 2-line console prompt/get answer into one line.
         /// </summary>
         /// <param name="prompt"></param>
-        /// <returns></returns>
+        /// <returns>String</returns>
         public static string getAnswer(String prompt)
         {
             Console.WriteLine(prompt);
@@ -94,7 +94,7 @@ namespace NW_EF_Console_MJH
         /// </summary>
         /// <param name="prompt"></param>
         /// <param name="currval"></param>
-        /// <returns></returns>
+        /// <returns>String</returns>
         public static string getAnswer(String prompt, String currval)
         {
             if (currval == null)
@@ -110,8 +110,9 @@ namespace NW_EF_Console_MJH
         /// <param name="prompt"></param>
         /// <param name="currval"></param>
         /// <param name="req"></param>
-        /// <returns></returns>
-        public static string getAnswer(String prompt, bool req)
+        /// <returns>String</returns>
+        /// NOTE: Supposedly c# can overload based on number or type of parameters. But when I originally had this as String prompt, bool req, and I added a category but first entered no name, I got an error on add.
+        public static string getAnswer(String prompt, String currval, bool req)
         {
             String retval = "";
             retval=getAnswer(prompt);
@@ -297,7 +298,7 @@ namespace NW_EF_Console_MJH
                 {
                     Console.WriteLine(q.CategoryName);
                     if (q.Products.Count() == 0)
-                        Console.WriteLine("\t<--no products-->");
+                        Console.WriteLine("\t<no products>");
                     else
                     {
                         IEnumerable<Product> products = q.Products.OrderBy(p => p.ProductName);
@@ -339,9 +340,36 @@ namespace NW_EF_Console_MJH
             }
         }
 
+        /// <summary>
+        /// Validate the product id typed by the user is both an int and found
+        /// </summary>
+        /// <param name="db">database context</param>
+        /// <param name="searchItem">user-typed value</param>
+        /// <returns>product id if found, else NOT_FOUND</returns>
+        public static int validateProductId(NWContext db, string searchItem)
+        {
+            int retval = NOT_FOUND;
+            // Make sure the user typed a valid int
+            if (int.TryParse(searchItem, out int id))
+            {
+                // Make sure the user typed a valid Id
+                if (db.Products.Any(p => p.ProductID.Equals(id)))
+                {
+                    Console.WriteLine($"1 record returned\n");
+                    retval = id;
+                }
+                else
+                    logger.Info($"No products found with product ID {id}.");
+            }
+            else
+                logger.Info($"Product id {searchItem} is not a valid ID.");
+
+            return retval;
+        }
+
         #endregion
 
-#region Category methods
+        #region Category methods
 
         public static void CategoryMenu(NWContext db)
         {
@@ -393,7 +421,7 @@ namespace NW_EF_Console_MJH
         {
             Category category = new Category();
 
-            category.CategoryName = getAnswer("Enter category name (required): ",  true);
+            category.CategoryName = getAnswer("Enter category name (required): ", "", true);
             category.Description = getAnswer("Enter category description: ");
             
             ValidationContext context = new ValidationContext(category, null, null); // New instance of ValidationContext using category.
@@ -449,7 +477,7 @@ namespace NW_EF_Console_MJH
 
             // Update description
             updatedCategory.Description = c.Description;
-            answer = getAnswer($"Enter new category name or press return to keep {c.Description}", c.Description);
+            answer = getAnswer($"Enter new category description or press return to keep {c.Description}", c.Description);
             if (answer != "")
                 updatedCategory.Description = answer;
         }
@@ -532,7 +560,7 @@ namespace NW_EF_Console_MJH
                 if (int.TryParse(itemChosen, out int id))
                     cId = id;
                 else
-                    logger.Info("Invalid number entered.");
+                    logger.Info($"Category id {itemChosen} is not a valid ID.");
             }
             else
             {
@@ -697,10 +725,7 @@ namespace NW_EF_Console_MJH
                         Console.WriteLine($"{query.Count()} record(s) returned\n");
                         consoleDisplayProducts(query, ID_DISPLAY);
                         string itemChosen = getAnswer("Enter the id number of the product you want: ");
-                        if (int.TryParse(itemChosen, out int id))
-                            pId = id;
-                        else
-                            Console.WriteLine("Invalid number entered.");
+                        pId = validateProductId(db, itemChosen);
                     }
                     else
                     {
@@ -719,10 +744,7 @@ namespace NW_EF_Console_MJH
                         Console.WriteLine($"{query.Count()} record(s) returned\n");
                         consoleDisplayProducts(query, WITH_CATEGORY_DISPLAY);
                         string itemChosen = getAnswer("Enter the id number of the product you want: ");
-                        if (int.TryParse(itemChosen, out int id))
-                            pId = id;
-                        else
-                            logger.Info("Invalid number entered.");
+                        pId = validateProductId(db, itemChosen);
                     }
                     else
                     {
@@ -732,17 +754,7 @@ namespace NW_EF_Console_MJH
                 else if (choice == "3")
                 {
                     string searchItem = getAnswer("Enter Product ID: ");
-                    if (int.TryParse(searchItem, out int id))
-                    {
-                        if (db.Products.Any(p => p.ProductID.Equals(pId)))
-                        {
-                            Product product = db.Products.Include("Category").FirstOrDefault(p => p.ProductID == pId);
-                            Console.WriteLine($"1 record returned\n");
-                            pId = product.ProductID;
-                        }
-                    }
-                    else
-                        logger.Info($"No products found with product id {searchItem}.");
+                    pId = validateProductId(db, searchItem);
                 }
 
                 Console.WriteLine();
@@ -750,7 +762,7 @@ namespace NW_EF_Console_MJH
 
             if (pId > NOT_FOUND)
             {
-                // Double check if the user hasn't mistyped the ID
+                // Get product record
                 if (db.Products.Any(p => p.ProductID.Equals(pId)))
                 {
                     logger.Info($"Returning product id {pId}.");
@@ -772,9 +784,8 @@ namespace NW_EF_Console_MJH
         /// <param name="db">database context</param>
         public static void AddProduct(NWContext db)
         {
-            // TODO: How do I validate CategoryID? (eg 99 doesn't exist, so adding a product with category produces a database error and doesn't add).
             Product product = new Product();
-            product.ProductName = getAnswer("Enter product name (required):", true);
+            product.ProductName = getAnswer("Enter product name (required):", "", true);
             product.SupplierId = validateInt("Enter the supplier ID (if any). Press return for ", null);
             product.CategoryId = validateInt("Enter the category ID (if any). Press return for ", null);
             product.QuantityPerUnit = getAnswer("Enter quantity per unit. Press return for ", "");
@@ -802,16 +813,26 @@ namespace NW_EF_Console_MJH
                 }
                 else
                 {
-                    logger.Info("Validation passed");
-
-                    try
+                    // If the user entered a Category Id, make sure it exists
+                    if ((product.CategoryId != null) && !(db.Categories.Any(c=>c.CategoryId==product.CategoryId)))
                     {
-                        db.AddProduct(product);
-                        logger.Info($"Product {product.ProductName} added.");
+                        isValid = false;
+                        results.Add(new ValidationResult("Category does not exist", new string[] { "CategoryId" }));
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        logger.Error(ex.Message);
+                        logger.Info("Validation passed");
+
+                        try
+                        {
+                            db.AddProduct(product);
+                            logger.Info($"Product {product.ProductName} added.");
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.Error(ex.Message);
+                        }
+
                     }
                 }
             }
@@ -887,6 +908,12 @@ namespace NW_EF_Console_MJH
                             isValid = false;
                             results.Add(new ValidationResult("Name exists", new string[] { "ProductName" }));
                         }
+                    }
+                    // If the user entered an updated Category Id, make sure it exists
+                    if ((updatedProduct.CategoryId != p.CategoryId) && (!db.Categories.Any(c => c.CategoryId == updatedProduct.CategoryId)))
+                    {
+                        isValid = false;
+                        results.Add(new ValidationResult("Category does not exist", new string[] { "CategoryId" }));
                     }
 
                     if (isValid)
