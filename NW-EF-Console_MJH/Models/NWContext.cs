@@ -15,6 +15,12 @@ namespace NW_EF_Console_MJH.Models
             this.SaveChanges();
         }
 
+        public void DeleteProduct (Product product)
+        {
+            this.Products.Remove(product);
+            this.SaveChanges();
+        }
+
         public void AddCategory(Category category)
         {
             this.Categories.Add(category);

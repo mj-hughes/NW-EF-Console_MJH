@@ -22,6 +22,7 @@ namespace NW_EF_Console_MJH
             
             try
             {
+
                 String[] mainMenu;
                 mainMenu = new string[4] { "===MAIN MENU===", "1) Products", "2) Categories", "\"q\" to quit" };
                 string choice;
@@ -254,8 +255,7 @@ namespace NW_EF_Console_MJH
             bool done = false;
 
             bool retval = currval;
-            if (currval == null)
-                prompt += "null";
+            prompt += currval;
             while (!done)
             {
                 string answer = getAnswer(prompt);
@@ -279,7 +279,7 @@ namespace NW_EF_Console_MJH
 
         #endregion
 
-        #region Category Helper Methods
+#region Category Helper Methods
 
         /// <summary>
         /// Displays categories either name/description or with id.
@@ -491,8 +491,8 @@ namespace NW_EF_Console_MJH
             int cId = findACategory(db);
             if (cId > NOT_FOUND)
             {
-                var category = db.Categories.Find(cId);
-//                var category = db.Categories.FirstOrDefault(c => c.CategoryId.Equals(cId));
+//                var category = db.Categories.Find(cId);
+                var category = db.Categories.FirstOrDefault(c => c.CategoryId.Equals(cId));
                 if (category!=null)
                 {
                     // Found. Get updated information
@@ -621,7 +621,7 @@ namespace NW_EF_Console_MJH
 
         #endregion
 
-        #region Product methods
+#region Product methods
 
         /// <summary>
         /// Display product menu; get and record user choice. Loop until q.
@@ -629,8 +629,9 @@ namespace NW_EF_Console_MJH
         /// <param name="db">database context</param>
         public static void ProductMenu(NWContext db)
         {
+
             String[] productMenu;
-            productMenu = new string[6] { "===PRODUCT MENU===", "1) Add a New Product", "2) Edit a Product", "3) Display Products", "4) Display a Product", "\"q\" to go back" };
+            productMenu = new string[7] { "===PRODUCT MENU===", "1) Add a New Product", "2) Edit a Product", "3) Display Products", "4) Display a Product", "5) Delete a Product","\"q\" to go back" };
             string choice;
             do
             {
@@ -670,6 +671,39 @@ namespace NW_EF_Console_MJH
                 else if (choice == "4")
                 {
                     var product = FindAndDisplayOneProduct(db); // Display a single product (the whole record)
+                }
+                else if (choice=="5")
+                {
+                    Product p = FindAndDisplayOneProduct(db);
+                    if (p!=null)
+                    {
+                        if (getAnswer("Okay to delete this product (Y/N)?").ToUpper() == "Y")
+                        {
+                            // Is this the last product for the category?
+                            var query = db.Products.Where(c => c.CategoryId == (int)p.CategoryId);
+                            Console.WriteLine($"Got {query.Count()} records.");
+                            if (query.Count() > 1)
+                            {
+                                // There is another...
+                                // TODO: Delete product
+                                logger.Info($"Deleting {p.ProductName}");
+                                db.DeleteProduct(p);
+                            }
+                            else
+                            {
+                                // This is the last one
+                                // TODO: Choice of not delete or remove category
+                                Console.WriteLine("WARNING: This is the last product for its category.");
+                                if (getAnswer("Do you want to delete BOTH the product and its category (Y/N)?").ToUpper() == "Y")
+                                    if (getAnswer("\tAre you sure you want to delete BOTH the product and its category (Y/N)?").ToUpper() == "Y")
+                                    {
+                                        // TODO: Delete product and category
+                                    }
+                            }
+                        }
+
+                    }
+
                 }
                 Console.WriteLine();
             } while (choice.ToLower() != "q");
@@ -970,7 +1004,7 @@ namespace NW_EF_Console_MJH
             updatedProduct.UnitsInStock = validateShort($"Enter new units in stock (0-32767) or press return to keep {p.UnitsInStock}", p.UnitsInStock);
             updatedProduct.UnitsOnOrder = validateShort($"Enter new units on order (0-32767) or press return to keep {p.UnitsOnOrder}", p.UnitsOnOrder);
             updatedProduct.ReorderLevel = validateShort($"Enter new reorder level (0-32767) or press return to keep {p.ReorderLevel}", p.ReorderLevel);
-            updatedProduct.Discontinued = validateBoolean($"Enter new discontinued flag or press return to keep {p.Discontinued}", p.Discontinued);
+            updatedProduct.Discontinued = validateBoolean($"Enter new discontinued flag or press return to keep ", p.Discontinued);
 
         }
         
