@@ -408,9 +408,29 @@ namespace NW_EF_Console_MJH
                     // Display a single category and its active products (Category Name, Product Name)
                     DisplayACategoryWithProducts(db);
                 }
-                else if (choice=="6")
+                else if (choice == "6")
                 {
-                    // TODO: Delete a specified existing record from the Categories table (account for Orphans in related tables)
+                    // Delete a specified existing record from the Categories table (account for Orphans in related tables)
+                    int cId = findACategory(db);
+                    if (cId > NOT_FOUND)
+                    {
+                        //                var category = db.Categories.Find(cId);
+                        var category = db.Categories.FirstOrDefault(c => c.CategoryId.Equals(cId));
+                        if (category != null)
+                        {
+                            // Choice of delete category plus all products or remove neither
+                            var query = db.Products.Where(c => c.CategoryId==cId);
+                            Console.WriteLine($"WARNING: Deleting this category will also delete {query.Count()} products.");
+                            if (getAnswer($"**Are you sure you want to delete BOTH the category {category.CategoryName} and {query.Count()} products (Y/N)?").ToUpper() == "Y")
+                            {
+                                // Delete products and their category
+                                foreach (Product p in query)
+                                    db.DeleteMultipleProducts(p);
+                                db.AfterDeleteMultipleProducts();
+                                db.DeleteCategory(category);
+                            }
+                        }
+                    }
                 }
                 Console.WriteLine();
             } while (choice.ToLower() != "q");
@@ -707,9 +727,7 @@ namespace NW_EF_Console_MJH
                                     }
                             }
                         }
-
                     }
-
                 }
                 Console.WriteLine();
             } while (choice.ToLower() != "q");

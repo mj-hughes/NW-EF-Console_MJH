@@ -40,6 +40,14 @@ namespace NW_EF_Console_MJH.Models
             this.Products.Remove(product);
             this.SaveChanges();
         }
+        public void DeleteMultipleProducts(Product product)
+        {
+            this.Products.Remove(product);
+        }
+        public void AfterDeleteMultipleProducts()
+        {
+            this.SaveChanges();
+        }
 
         public void UpdateProduct(Product updatedProduct)
         {
