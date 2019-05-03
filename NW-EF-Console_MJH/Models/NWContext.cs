@@ -9,18 +9,6 @@ namespace NW_EF_Console_MJH.Models
         public DbSet<Product> Products { get; set; }
         public DbSet<Category> Categories { get; set; }
 
-        public void AddProduct(Product product)
-        {
-            this.Products.Add(product);
-            this.SaveChanges();
-        }
-
-        public void DeleteProduct (Product product)
-        {
-            this.Products.Remove(product);
-            this.SaveChanges();
-        }
-
         public void AddCategory(Category category)
         {
             this.Categories.Add(category);
@@ -32,6 +20,24 @@ namespace NW_EF_Console_MJH.Models
             Category category = this.Categories.Find(updatedCategory.CategoryId);
             category.CategoryName = updatedCategory.CategoryName;
             category.Description = updatedCategory.Description;
+            this.SaveChanges();
+        }
+
+        public void DeleteCategory(Category category)
+        {
+            this.Categories.Remove(category);
+            this.SaveChanges();
+        }
+
+        public void AddProduct(Product product)
+        {
+            this.Products.Add(product);
+            this.SaveChanges();
+        }
+
+        public void DeleteProduct(Product product)
+        {
+            this.Products.Remove(product);
             this.SaveChanges();
         }
 

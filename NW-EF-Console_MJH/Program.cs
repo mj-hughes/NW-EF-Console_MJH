@@ -22,7 +22,7 @@ namespace NW_EF_Console_MJH
             
             try
             {
-
+                // TODO: Use data annotations and handle ALL user errors gracefully & log all errors using NLog
                 String[] mainMenu;
                 mainMenu = new string[4] { "===MAIN MENU===", "1) Products", "2) Categories", "\"q\" to quit" };
                 string choice;
@@ -374,7 +374,7 @@ namespace NW_EF_Console_MJH
         public static void CategoryMenu(NWContext db)
         {
             String[] categoryMenu;
-            categoryMenu = new string[7] { "===CATEGORY MENU===", "1) Add a New Category", "2) Edit a Category", "3) Display All Categories", "4) Display All Categories and Their Active Products", "5) Display a Category and Its Products", "\"q\" to go back" };
+            categoryMenu = new string[8] { "===CATEGORY MENU===", "1) Add a New Category", "2) Edit a Category", "3) Display All Categories", "4) Display All Categories and Their Active Products", "5) Display a Category and Its Products", "6) Delete a category", "\"q\" to go back" };
             string choice;
             do
             {
@@ -407,6 +407,10 @@ namespace NW_EF_Console_MJH
                 {
                     // Display a single category and its active products (Category Name, Product Name)
                     DisplayACategoryWithProducts(db);
+                }
+                else if (choice=="6")
+                {
+                    // TODO: Delete a specified existing record from the Categories table (account for Orphans in related tables)
                 }
                 Console.WriteLine();
             } while (choice.ToLower() != "q");
@@ -674,6 +678,7 @@ namespace NW_EF_Console_MJH
                 }
                 else if (choice=="5")
                 {
+                    // Delete a specified existing record from the Products table (account for Orphans in related tables)
                     Product p = FindAndDisplayOneProduct(db);
                     if (p!=null)
                     {
@@ -681,23 +686,24 @@ namespace NW_EF_Console_MJH
                         {
                             // Is this the last product for the category?
                             var query = db.Products.Where(c => c.CategoryId == (int)p.CategoryId);
-                            Console.WriteLine($"Got {query.Count()} records.");
                             if (query.Count() > 1)
                             {
                                 // There is another...
-                                // TODO: Delete product
                                 logger.Info($"Deleting {p.ProductName}");
                                 db.DeleteProduct(p);
                             }
                             else
                             {
                                 // This is the last one
-                                // TODO: Choice of not delete or remove category
+                                // Choice of delete product plus remove category or remove neither
                                 Console.WriteLine("WARNING: This is the last product for its category.");
                                 if (getAnswer("Do you want to delete BOTH the product and its category (Y/N)?").ToUpper() == "Y")
-                                    if (getAnswer("\tAre you sure you want to delete BOTH the product and its category (Y/N)?").ToUpper() == "Y")
+                                    if (getAnswer("**Are you sure you want to delete BOTH (Y/N)?").ToUpper() == "Y")
                                     {
-                                        // TODO: Delete product and category
+                                        // Delete product and category
+                                        var category = db.Categories.FirstOrDefault(c => c.CategoryId == (int)p.CategoryId);
+                                        db.DeleteCategory(category);
+                                        db.DeleteProduct(p);
                                     }
                             }
                         }
