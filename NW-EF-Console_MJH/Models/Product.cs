@@ -9,7 +9,9 @@ namespace NW_EF_Console_MJH.Models
         [Required(ErrorMessage = "Please enter the product name")]
         [StringLength(40, ErrorMessage = "The {0} value cannot exceed {1} characters. ")]
         public string ProductName { get; set; }
+        [StringLength(20, ErrorMessage = "The {0} value cannot exceed {1} characters. ")]
         public string QuantityPerUnit { get; set; }
+        [DataType(DataType.Currency)]
         public decimal? UnitPrice { get; set; }
         [Range(0, 32767, ErrorMessage = "Value for {0} must be between {1} and {2}.")]
         public Int16? UnitsInStock { get; set; }

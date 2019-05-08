@@ -2,10 +2,15 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using System.Linq.Expressions;
 using NW_EF_Console_MJH.Models;
 
 namespace NW_EF_Console_MJH
 {
+    /// <summary>
+    /// Program to maintain Products and Categories.
+    /// Author: Mary Hughes
+    /// </summary>
     class Program
     {
         private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
@@ -22,7 +27,7 @@ namespace NW_EF_Console_MJH
             
             try
             {
-                // TODO: Use data annotations and handle ALL user errors gracefully & log all errors using NLog
+                // Use data annotations and handle ALL user errors gracefully & log all errors using NLog
                 String[] mainMenu;
                 mainMenu = new string[4] { "===MAIN MENU===", "1) Products", "2) Categories", "\"q\" to quit" };
                 string choice;
@@ -57,7 +62,7 @@ namespace NW_EF_Console_MJH
         /// <summary>
         /// Display items in menu array
         /// </summary>
-        /// <param name="menu"></param>
+        /// <param name="menu">String array containing menu items</param>
         public static void DisplayMenu(String[] menu)
         {
             foreach (String m in menu)
@@ -122,7 +127,7 @@ namespace NW_EF_Console_MJH
                 bool done = false;
                 while (!done)
                 {
-                    Console.WriteLine("Value is required.");
+                    logger.Info("Value is required.");
                     Console.WriteLine(prompt);
                     retval = Console.ReadLine();
                     if (retval != "")
@@ -132,8 +137,7 @@ namespace NW_EF_Console_MJH
             return retval;
 
         }
-        //TODO: Is there a way to combine all these validations into one routine?
-        //TODO: Would it be better to call the data annotation validation after each field?
+
 
         /// <summary>
         /// Show user current information and prompt for a new value. Validate as an int. 
@@ -165,7 +169,7 @@ namespace NW_EF_Console_MJH
                     }
                 }
                 if (!done)
-                    Console.WriteLine("Please enter an integer 0 or greater or press return to leave this field.");
+                    logger.Info("Please enter an integer 0 or greater or press return to leave this field.");
             }
 
             return retval;
@@ -201,7 +205,7 @@ namespace NW_EF_Console_MJH
                     }
                 }
                 if (!done)
-                    Console.WriteLine("Please enter a money value 0 or greater or press return to leave this field.");
+                    logger.Info("Please enter a money value 0 or greater or press return to leave this field.");
             }
 
             return retval;
@@ -237,7 +241,7 @@ namespace NW_EF_Console_MJH
                     }
                 }
                 if (!done)
-                    Console.WriteLine("Please enter a number between 0 and 32757 or press return to leave this field.");
+                    logger.Info("Please enter a number between 0 and 32757 or press return to leave this field.");
             }
 
             return retval;
@@ -269,17 +273,39 @@ namespace NW_EF_Console_MJH
                         done = true;
                     }
                     else
-                        Console.WriteLine("Please enter true or false, or press return to leave this field.");
+                        logger.Info("Please enter true or false, or press return to leave this field.");
                 }
             }
 
             return retval;
         }
 
-
         #endregion
 
-#region Category Helper Methods
+        #region Category Helper Methods
+
+        /// <summary>
+        /// validateCategory - validates the category record using data annotations. Designed to be used after each field.
+        /// </summary>
+        /// <param name="db">database context</param>
+        /// <param name="category">category record</param>
+        /// <returns></returns>
+        public static Boolean validateCategory(NWContext db, Category category)
+        {
+            ValidationContext context = new ValidationContext(category, null, null); // New instance of ValidationContext using category.
+            List<ValidationResult> results = new List<ValidationResult>(); // Store the errors in a list
+
+            var isValid = Validator.TryValidateObject(category, context, results, true);
+            if (!isValid)
+            {
+                foreach (var result in results)
+                {
+                    logger.Error($"{result.MemberNames.First()} : {result.ErrorMessage}");
+                }
+            }
+            return isValid;
+        }
+
 
         /// <summary>
         /// Displays categories either name/description or with id.
@@ -312,9 +338,33 @@ namespace NW_EF_Console_MJH
             }
         }
 
-#endregion
-        
+        #endregion
+
 #region Product Helper Methods
+
+
+        /// <summary>
+        /// validateProduct - validates the product record using data annotations. Designed to be used after each field.
+        /// </summary>
+        /// <param name="db">database context</param>
+        /// <param name="product">product record</param>
+        /// <returns></returns>
+        public static Boolean validateProduct(NWContext db, Product product)
+        {
+            ValidationContext context = new ValidationContext(product, null, null); // New instance of ValidationContext using product.
+            List<ValidationResult> results = new List<ValidationResult>(); // Store the errors in a list
+
+            var isValid = Validator.TryValidateObject(product, context, results, true);
+            if (!isValid)
+            {
+                foreach (var result in results)
+                {
+                    logger.Error($"{result.MemberNames.First()} : {result.ErrorMessage}");
+                }
+            }
+            return isValid;
+        }
+
 
         /// <summary>
         /// Display products in the given style
@@ -326,7 +376,7 @@ namespace NW_EF_Console_MJH
             System.ConsoleColor saveConsoleColor = Console.ForegroundColor;
             foreach (var item in query)
             {
-                // TODO: Note the DarkRed console color for full points
+                // Discontinued products display in DarkRed console color 
                 if (item.Discontinued)
                     Console.ForegroundColor = ConsoleColor.DarkRed;
                 if (displayType==NAME_DISPLAY)
@@ -369,7 +419,7 @@ namespace NW_EF_Console_MJH
 
         #endregion
 
-        #region Category methods
+#region Category methods
 
         public static void CategoryMenu(NWContext db)
         {
@@ -411,26 +461,7 @@ namespace NW_EF_Console_MJH
                 else if (choice == "6")
                 {
                     // Delete a specified existing record from the Categories table (account for Orphans in related tables)
-                    int cId = findACategory(db);
-                    if (cId > NOT_FOUND)
-                    {
-                        //                var category = db.Categories.Find(cId);
-                        var category = db.Categories.FirstOrDefault(c => c.CategoryId.Equals(cId));
-                        if (category != null)
-                        {
-                            // Choice of delete category plus all products or remove neither
-                            var query = db.Products.Where(c => c.CategoryId==cId);
-                            Console.WriteLine($"WARNING: Deleting this category will also delete {query.Count()} products.");
-                            if (getAnswer($"**Are you sure you want to delete BOTH the category {category.CategoryName} and {query.Count()} products (Y/N)?").ToUpper() == "Y")
-                            {
-                                // Delete products and their category
-                                foreach (Product p in query)
-                                    db.DeleteMultipleProducts(p);
-                                db.AfterDeleteMultipleProducts();
-                                db.DeleteCategory(category);
-                            }
-                        }
-                    }
+                    DeleteCategory(db);
                 }
                 Console.WriteLine();
             } while (choice.ToLower() != "q");
@@ -438,42 +469,83 @@ namespace NW_EF_Console_MJH
         }
 
         /// <summary>
+        /// DeleteCategory finds the desired category if it exists and deletes (accounting for orphans in related tables)
+        /// </summary>
+        /// <param name="db">database context</param>
+        public static void DeleteCategory(NWContext db)
+        {
+            int cId = findACategory(db);
+            if (cId > NOT_FOUND)
+            {
+                var category = db.Categories.FirstOrDefault(c => c.CategoryId.Equals(cId));
+                if (category != null)
+                {
+                    // Choice of delete category plus all products or remove neither
+                    var query = db.Products.Where(c => c.CategoryId == cId);
+                    Console.WriteLine($"WARNING: Deleting this category will also delete {query.Count()} products.");
+                    if (getAnswer($"**Are you sure you want to delete BOTH the category {category.CategoryName} and {query.Count()} products (Y/N)?").ToUpper() == "Y")
+                    {
+                        // Delete products and their category
+                        foreach (Product p in query)
+                            db.DeleteMultipleProducts(p);
+                        db.AfterDeleteMultipleProducts();
+                        db.DeleteCategory(category);
+                    }
+                }
+            }
+        }
+
+
+        /// <summary>
         /// Add a category
         /// </summary>
         /// <param name="db">database context</param>
         public static void AddCategory(NWContext db)
         {
+            // Validate the category record after each field but also at the end
             Category category = new Category();
+            Boolean isValid = false;
+            do
+            {
+                category.CategoryName = getAnswer("Enter category name (required): ", "", true);
+                isValid=validateCategory(db, category);
+                if (isValid)
+                {
+                    // check that category name hasn't already been used
+ 
+                    if (db.Categories.Any(c => c.CategoryName.ToUpper() == category.CategoryName.ToUpper()))
 
-            category.CategoryName = getAnswer("Enter category name (required): ", "", true);
-            category.Description = getAnswer("Enter category description: ");
-            
+                    {
+                        // generate validation error
+                        isValid = false;
+                        logger.Error("Name exists", new string[] { "CategoryName" });
+                    }
+                }
+            } while (!isValid);
+            isValid = false;
+            do
+            {
+                category.Description = getAnswer("Enter category description: ");
+                isValid = validateCategory(db, category);
+
+            } while (!isValid);
+
             ValidationContext context = new ValidationContext(category, null, null); // New instance of ValidationContext using category.
             List<ValidationResult> results = new List<ValidationResult>(); // Store the errors in a list
 
-            var isValid = Validator.TryValidateObject(category, context, results, true);
+            isValid = Validator.TryValidateObject(category, context, results, true);
             if (isValid)
             {
-                // check that category name hasn't already been used
-                if (db.Categories.Any(c=>c.CategoryName == category.CategoryName))
-                {
-                    // generate validation error
-                    isValid = false;
-                    results.Add(new ValidationResult("Name exists", new string[] { "CategoryName" }));
-                }
-                else
-                {
-                    logger.Info("Validation passed");
+                logger.Info("Validation passed");
 
-                    try
-                    {
-                        db.AddCategory(category);
-                        logger.Info($"Category {category.CategoryName} added.");
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.Error(ex.Message);
-                    }
+                try
+                {
+                    db.AddCategory(category);
+                    logger.Info($"Category {category.CategoryName} added.");
+                }
+                catch (Exception ex)
+                {
+                    logger.Error(ex.Message);
                 }
             }
             if (!isValid)
@@ -491,19 +563,45 @@ namespace NW_EF_Console_MJH
         /// </summary>
         /// <param name="c">curent category information</param>
         /// <param name="updatedCategory">changed category information</param>
-        public static void EditCategoryFields(Category c, Category updatedCategory)
+        public static void EditCategoryFields(Category c, Category updatedCategory, NWContext db)
         {
+            // Validate the category record after each field but also at the end
             // Update category name
-            updatedCategory.CategoryName = c.CategoryName;
-            String answer = getAnswer($"Enter new category name or press return to keep {c.CategoryName}", c.CategoryName);
-            if (answer != "")
-                updatedCategory.CategoryName = answer;
+            Boolean isValid = false;
+            do
+            {
+                updatedCategory.CategoryName = c.CategoryName;
+                String answer = getAnswer($"Enter new category name or press return to keep {c.CategoryName}", c.CategoryName);
+                // A return will keep the current value
+                if (answer != "")
+                {
+                    updatedCategory.CategoryName = answer;
+                    isValid = validateCategory(db, updatedCategory);
+                    if (isValid)
+                    {
+                        // check that category name hasn't already been used
+                        if (db.Categories.Any(uc => uc.CategoryName == updatedCategory.CategoryName))
+                        {
+                            // generate validation error
+                            isValid = false;
+                            logger.Error("Name exists", new string[] { "CategoryName" });
+                        }
+                    }
+                }
+                else
+                    isValid = true;
+            } while (!isValid);
 
             // Update description
-            updatedCategory.Description = c.Description;
-            answer = getAnswer($"Enter new category description or press return to keep {c.Description}", c.Description);
-            if (answer != "")
-                updatedCategory.Description = answer;
+            isValid = false;
+            do
+            {
+                updatedCategory.Description = c.Description;
+                String answer = getAnswer($"Enter new category description or press return to keep {c.Description}", c.Description);
+                if (answer != "")
+                    updatedCategory.Description = answer;
+                isValid = validateCategory(db, updatedCategory);
+            } while (!isValid);
         }
 
         /// <summary>
@@ -521,7 +619,7 @@ namespace NW_EF_Console_MJH
                 {
                     // Found. Get updated information
                     Category updatedCategory = new Category();
-                    EditCategoryFields(category, updatedCategory);
+                    EditCategoryFields(category, updatedCategory, db);
 
                     // Validate updated category
                     ValidationContext context = new ValidationContext(updatedCategory, null, null);
@@ -533,7 +631,7 @@ namespace NW_EF_Console_MJH
                         // If the category name has changed, check that it's unique
                         if (updatedCategory.CategoryName != category.CategoryName)
                         {
-                            if (db.Categories.Any(c => c.CategoryName== updatedCategory.CategoryName))
+                            if (db.Categories.Any(c => c.CategoryName==updatedCategory.CategoryName))
                             {
                                 // generate validation error
                                 isValid = false;
@@ -547,7 +645,7 @@ namespace NW_EF_Console_MJH
 
                             try
                             {
-                                updatedCategory.CategoryId= category.CategoryId;
+                                updatedCategory.CategoryId = category.CategoryId;
                                 db.UpdateCategory(updatedCategory);
                                 logger.Info($"Category {category.CategoryId}: {updatedCategory.CategoryName} updated.");
                             }
@@ -604,9 +702,9 @@ namespace NW_EF_Console_MJH
         }
 
         /// <summary>
-                /// Display all categories
-                /// </summary>
-                /// <param name="db">database context</param>
+        /// Display all categories
+        /// </summary>
+        /// <param name="db">database context</param>
         public static void DisplayAllCategories(NWContext db)
         {
             // Display all categories
@@ -637,9 +735,6 @@ namespace NW_EF_Console_MJH
             {
                 var cat = db.Categories.Include("Products").Where(c => c.CategoryId.Equals(cId));
                 consoleDisplayCategories(cat, WITH_PRODUCT_DISPLAY);
-                // TODO: Maybe this is something for full points
-                // String sql = db.Categories.Include("Products").Sql;
-                // Console.WriteLine(sql);
             }
         }
 
@@ -694,12 +789,12 @@ namespace NW_EF_Console_MJH
                 }
                 else if (choice == "4")
                 {
-                    var product = FindAndDisplayOneProduct(db); // Display a single product (the whole record)
+                    var product = FindAndDisplayOneProduct(db, "Display"); // Display a single product (the whole record)
                 }
                 else if (choice=="5")
                 {
                     // Delete a specified existing record from the Products table (account for Orphans in related tables)
-                    Product p = FindAndDisplayOneProduct(db);
+                    Product p = FindAndDisplayOneProduct(db, "Delete");
                     if (p!=null)
                     {
                         if (getAnswer("Okay to delete this product (Y/N)?").ToUpper() == "Y")
@@ -739,10 +834,10 @@ namespace NW_EF_Console_MJH
         /// </summary>
         /// <param name="db">database context</param>
         /// <returns></returns>
-        public static Product FindAndDisplayOneProduct(NWContext db)
+        public static Product FindAndDisplayOneProduct(NWContext db, string callingMenu)
         {
             // Display a single product (the whole record)
-            var product = FindOneProduct(db);
+            var product = FindOneProduct(db, callingMenu);
             if (product != null)
             {
                 Console.WriteLine(db.DisplayAProduct(product));
@@ -756,13 +851,13 @@ namespace NW_EF_Console_MJH
         /// </summary>
         /// <param name="db"></param>
         /// <returns>Product or null</returns>
-        public static Product FindOneProduct(NWContext db)
+        public static Product FindOneProduct(NWContext db, string callingMenu)
         {
             int pId= NOT_FOUND; // Chosen product ID; start with invalid id NOT_FOUND
             // Display Single Product Search Menu:
             // user can search on Product Name, Category Name, Product ID
             String[] productSearchMenu;
-            productSearchMenu = new string[5] { "---Product Search Menu---", "1) Search on Product Name", "2) Search on Category Name", "3) Search on Product ID", "\"q\" to go back" };
+            productSearchMenu = new string[6] {"==="+callingMenu+"===", "---Product Search Menu---", "1) Search on Product Name", "2) Search on Category Name", "3) Search on Product ID", "\"q\" to go back" };
             string choice;
             do
             {
@@ -842,15 +937,84 @@ namespace NW_EF_Console_MJH
         /// <param name="db">database context</param>
         public static void AddProduct(NWContext db)
         {
+            // Validate the product record after each field but also at the end
             Product product = new Product();
-            product.ProductName = getAnswer("Enter product name (required):", "", true);
-            product.SupplierId = validateInt("Enter the supplier ID (if any). Press return for ", null);
-            product.CategoryId = validateInt("Enter the category ID (if any). Press return for ", null);
-            product.QuantityPerUnit = getAnswer("Enter quantity per unit. Press return for ", "");
-            product.UnitPrice = validateDecimal("Enter the unit price. Press return for ", null);
-            product.UnitsInStock = validateShort("Enter the units in stock (0-32767). Press return for ", null);
-            product.UnitsOnOrder = validateShort("Enter the units on order (0-32767). Press return for ", null);
-            product.ReorderLevel = validateShort("Enter the reorder level (0-32767). Press return for ", null);
+            Boolean isValid = false;
+            do
+            {
+                product.ProductName = getAnswer("Enter product name (required, maximum 40 characters):", "", true);
+                isValid = validateProduct(db, product);
+                if (isValid)
+                {
+                    // check that product name hasn't already been used
+                    if (db.Products.Any(p => p.ProductName == product.ProductName))
+                    {
+                        isValid = false;
+                        Console.WriteLine("Name exists", new string[] { "ProductName" });
+                    }
+                }
+            } while (!isValid);
+
+            isValid = false;
+            do
+            {
+                product.SupplierId = validateInt("Enter the supplier ID (if any). Press return for ", null);
+                isValid = validateProduct(db, product);
+                // If the user entered a Supplier Id, make sure it exists
+                if (isValid)
+                {
+                    if ((product.SupplierId != null) && !(db.Suppliers.Any(s => s.SupplierId == product.SupplierId)))
+                    {
+                        isValid = false;
+                        Console.WriteLine($"Supplier {product.SupplierId} does not exist");
+                    }
+                }
+            } while (!isValid);
+            isValid = false;
+            do
+            {
+                product.CategoryId = validateInt("Enter the category ID (if any). Press return for ", null);
+                isValid = validateProduct(db, product);
+                // If the user entered a Category Id, make sure it exists
+                if (isValid)
+                {
+                    if ((product.CategoryId != null) && !(db.Categories.Any(c => c.CategoryId == product.CategoryId)))
+                    {
+                        isValid = false;
+                        Console.WriteLine($"Category { product.CategoryId } does not exist");
+                    }
+                }
+            } while (!isValid);
+            isValid = false;
+            do
+            {
+                product.QuantityPerUnit = getAnswer("Enter quantity per unit (maximum 20 characters). Press return for ", "");
+                isValid = validateProduct(db, product);
+            } while (!isValid);
+            isValid = false;
+            do
+            {
+                product.UnitPrice = validateDecimal("Enter the unit price (any fractions of pennies will be rounded). Press return for ", null);
+                isValid = validateProduct(db, product);
+            } while (!isValid);
+            isValid = false;
+            do
+            {
+                product.UnitsInStock = validateShort("Enter the units in stock (0-32767). Press return for ", null);
+                isValid = validateProduct(db, product);
+            } while (!isValid);
+            isValid = false;
+            do
+            {
+                product.UnitsOnOrder = validateShort("Enter the units on order (0-32767). Press return for ", null);
+                isValid = validateProduct(db, product);
+            } while (!isValid);
+            isValid = false;
+            do
+            {
+                product.ReorderLevel = validateShort("Enter the reorder level (0-32767). Press return for ", null);
+                isValid = validateProduct(db, product);
+            } while (!isValid);
             product.Discontinued = false;
 
             // Initializes a new instance of the ValidationContext class using the object, the service provider, and dictionary of service consumers.
@@ -859,40 +1023,21 @@ namespace NW_EF_Console_MJH
 
             // Validator is a helper class that can be used to validate objects, properties, and methods when it is included in their associated ValidationAttribute attributes.
             // TryValidateObject(Object, ValidationContext, ICollection<ValidationResult>, Boolean) Determines whether the specified object is valid using the validation context, validation results collection, and a value that specifies whether to validate all properties.
-            var isValid = Validator.TryValidateObject(product, context, results, true);
+            isValid = Validator.TryValidateObject(product, context, results, true);
             if (isValid)
             {
-                // check that product name hasn't already been used
-                if (db.Products.Any(p => p.ProductName == product.ProductName))
-                {
-                    // generate validation error
-                    isValid = false;
-                    results.Add(new ValidationResult("Name exists", new string[] { "ProductName" }));
-                }
-                else
-                {
-                    // If the user entered a Category Id, make sure it exists
-                    if ((product.CategoryId != null) && !(db.Categories.Any(c=>c.CategoryId==product.CategoryId)))
-                    {
-                        isValid = false;
-                        results.Add(new ValidationResult("Category does not exist", new string[] { "CategoryId" }));
-                    }
-                    else
-                    {
-                        logger.Info("Validation passed");
+                logger.Info("Validation passed");
 
-                        try
-                        {
-                            db.AddProduct(product);
-                            logger.Info($"Product {product.ProductName} added.");
-                        }
-                        catch (Exception ex)
-                        {
-                            logger.Error(ex.Message);
-                        }
-
-                    }
+                try
+                {
+                    db.AddProduct(product);
+                    logger.Info($"Product {product.ProductName} added.");
                 }
+                catch (Exception ex)
+                {
+                    logger.Error(ex.Message);
+                }
+
             }
             if (!isValid)
             {
@@ -943,12 +1088,12 @@ namespace NW_EF_Console_MJH
         public static void EditProduct(NWContext db)
         {
             // Find and display the product to edit
-            Product p = FindAndDisplayOneProduct(db);            
+            Product p = FindAndDisplayOneProduct(db, "Edit");            
             if (p!=null)
             {
                 // Found. Get updated information
                 Product updatedProduct = new Product();
-                EditProductFields(p, updatedProduct);
+                EditProductFields(p, updatedProduct, db);
 
                 // Validate updated product
                 ValidationContext context = new ValidationContext(updatedProduct, null, null);
@@ -1006,34 +1151,110 @@ namespace NW_EF_Console_MJH
         /// </summary>
         /// <param name="p"></param>
         /// <param name="updatedProduct"></param>
-        public static void EditProductFields(Product p, Product updatedProduct)
+        public static void EditProductFields(Product p, Product updatedProduct, NWContext db)
         {
-
+            // Validate the product record after each field but also at the end
             // Update product name
-            updatedProduct.ProductName = p.ProductName;
-            String answer = getAnswer($"Enter new product name or press return to keep { p.ProductName}", p.ProductName);
-            if (answer != "")
-                updatedProduct.ProductName = answer;
+            Boolean isValid = false;
+            do
+            {
+                updatedProduct.ProductName = p.ProductName;
+                String answer = getAnswer($"Enter new product name (required, maximum 40 characters) or press return to keep { p.ProductName}", p.ProductName);
+                // A return will keep the current name
+                if (answer != "")
+                {
+                    updatedProduct.ProductName = answer;
+                    isValid = validateProduct(db, updatedProduct);
+                    if (isValid)
+                    {
+                        // check that product name hasn't already been used
+                        if (db.Products.Any(up => up.ProductName == updatedProduct.ProductName))
+                        {
+                            isValid = false;
+                            Console.WriteLine("Name exists", new string[] { "ProductName" });
+                        }
+                    }
+                }
+                else
+                    isValid = true;
+            } while (!isValid);
 
-            updatedProduct.SupplierId = validateInt($"Enter new supplier ID or press return to keep {p.SupplierId}", p.SupplierId);
-            updatedProduct.CategoryId = validateInt($"Enter new category ID or press return to keep {p.CategoryId}", p.CategoryId);
+            isValid = false;
+            do
+            {
+                updatedProduct.SupplierId = validateInt($"Enter new supplier ID or press return to keep {p.SupplierId}", p.SupplierId);
+                isValid = validateProduct(db, updatedProduct);
+                if (isValid)
+                {
+                    // If the user entered a Supplier Id, make sure it exists
+                    if ((updatedProduct.SupplierId != null) && !(db.Suppliers.Any(s => s.SupplierId == updatedProduct.SupplierId)))
+                    {
+                        isValid = false;
+                        Console.WriteLine($"Supplier {updatedProduct.SupplierId} does not exist");
+                    }
+                }
+            } while (!isValid);
+            isValid = false;
+            do
+            {
+                updatedProduct.CategoryId = validateInt($"Enter new category ID or press return to keep {p.CategoryId}", p.CategoryId);
+                isValid = validateProduct(db, updatedProduct);
+                // If the user entered a Category Id, make sure it exists
+                if (isValid)
+                {
+                    if ((updatedProduct.CategoryId != null) && !(db.Categories.Any(c => c.CategoryId == updatedProduct.CategoryId)))
+                    {
+                        isValid = false;
+                        Console.WriteLine($"Category { "updatedProduct.CategoryId" } does not exist");
+                    }
+                }
+            } while (!isValid);
 
             // Update quantity per unit
-            updatedProduct.QuantityPerUnit = p.QuantityPerUnit;
-            answer = getAnswer($"Enter new quantity per unit or press return to keep {p.QuantityPerUnit}", p.QuantityPerUnit);
-            if (answer != "")
-                updatedProduct.QuantityPerUnit = answer;
-
-            updatedProduct.UnitPrice = validateDecimal($"Enter new unit price or press return to keep {p.UnitPrice,10:c2}", p.UnitPrice);
-            updatedProduct.UnitsInStock = validateShort($"Enter new units in stock (0-32767) or press return to keep {p.UnitsInStock}", p.UnitsInStock);
-            updatedProduct.UnitsOnOrder = validateShort($"Enter new units on order (0-32767) or press return to keep {p.UnitsOnOrder}", p.UnitsOnOrder);
-            updatedProduct.ReorderLevel = validateShort($"Enter new reorder level (0-32767) or press return to keep {p.ReorderLevel}", p.ReorderLevel);
-            updatedProduct.Discontinued = validateBoolean($"Enter new discontinued flag or press return to keep ", p.Discontinued);
+            isValid = false;
+            do
+            {
+                updatedProduct.QuantityPerUnit = p.QuantityPerUnit;
+                String answer = getAnswer($"Enter new quantity per unit (maximum 20 characters) or press return to keep {p.QuantityPerUnit} ", p.QuantityPerUnit);
+                if (answer != "")
+                    updatedProduct.QuantityPerUnit = answer;
+                isValid = validateProduct(db, updatedProduct);
+            } while (!isValid);
+            isValid = false;
+            do
+            {
+                updatedProduct.UnitPrice = validateDecimal($"Enter new unit price (any fractions of cents will be rounded) or press return to keep {p.UnitPrice,0:c2} ", p.UnitPrice);
+                isValid = validateProduct(db, updatedProduct);
+            } while (!isValid);
+            isValid = false;
+            do
+            {
+                updatedProduct.UnitsInStock = validateShort($"Enter new units in stock (0-32767) or press return to keep {p.UnitsInStock}", p.UnitsInStock);
+                isValid = validateProduct(db, updatedProduct);
+            } while (!isValid);
+            isValid = false;
+            do
+            {
+                updatedProduct.UnitsOnOrder = validateShort($"Enter new units on order (0-32767) or press return to keep {p.UnitsOnOrder}", p.UnitsOnOrder);
+                isValid = validateProduct(db, updatedProduct);
+            } while (!isValid);
+            isValid = false;
+            do
+            {
+                updatedProduct.ReorderLevel = validateShort($"Enter new reorder level (0-32767) or press return to keep {p.ReorderLevel}", p.ReorderLevel);
+                isValid = validateProduct(db, updatedProduct);
+            } while (!isValid);
+            isValid = false;
+            do
+            {
+                updatedProduct.Discontinued = validateBoolean($"Enter new discontinued flag (true/false) or press return to keep ", p.Discontinued);
+                isValid = validateProduct(db, updatedProduct);
+            } while (!isValid);
 
         }
-        
+
         #endregion product methods
 
-        // End Program; End Namespace
-    }
+            // End Program; End Namespace
+        }
 }
