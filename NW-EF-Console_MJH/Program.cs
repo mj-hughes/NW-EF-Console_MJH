@@ -497,6 +497,27 @@ namespace NW_EF_Console_MJH
 
 
         /// <summary>
+        /// searchForCategoryname - create a lambda expression to search for the category name
+        /// I was trying to use this in the TicketSystem search where the user had a choice of searching by Status, Priority, or Submitter
+        /// </summary>
+        /// <param name="constantString">item to search for</param>
+        /// <returns>Func<Category, bool> lambda function</returns>
+        public static Func<Category, bool> searchForCategoryName(string constantString)
+        {
+            //  replaces c => c.CategoryName.ToUpper() == category.CategoryName.ToUpper()
+            var parameter = Expression.Parameter(typeof(Category), "c"); // the c to the left of the =>
+            // This joins the left and right sides of the == together: the second line is c.CategoryName.ToUpper(); the third line is category.CategoryName.ToUpper(); the Equal is the ==
+            var comparison = Expression.Equal(
+                        Expression.Call(Expression.Property(parameter, "CategoryName"), "ToUpper", Type.EmptyTypes),
+                                Expression.Constant(constantString));
+            // This joins the left and right sides of the => together
+            Func<Category, bool> filterExpression = Expression.Lambda<Func<Category, bool>>(comparison, parameter).Compile();
+
+            return filterExpression;
+        }
+
+
+        /// <summary>
         /// Add a category
         /// </summary>
         /// <param name="db">database context</param>
@@ -508,13 +529,26 @@ namespace NW_EF_Console_MJH
             do
             {
                 category.CategoryName = getAnswer("Enter category name (required): ", "", true);
-                isValid=validateCategory(db, category);
+                isValid = validateCategory(db, category);
                 if (isValid)
                 {
                     // check that category name hasn't already been used
- 
-                    if (db.Categories.Any(c => c.CategoryName.ToUpper() == category.CategoryName.ToUpper()))
+                    // both of the following lambda expressions replace this: 
+                    //      if (db.Categories.Any(c => c.CategoryName.ToUpper() == category.CategoryName.ToUpper()))
 
+                    // A dynamic lambda expression
+                    var parameterExpression = Expression.Parameter(typeof(Category), "c"); // this is the c to the left of the =>
+                    var member = Expression.Property(parameterExpression, "CategoryName"); // this is the c.CategoryName just to the right of the =>
+                    var left = Expression.Call(member, "ToUpper", Type.EmptyTypes); // This adds the ToUpper() to the c.CategoryName
+                    var constant = Expression.Constant(category.CategoryName.ToUpper()); // This is the category.Categoryname.ToUpper to the right of the == (search constant)
+                    var body = Expression.Equal(left, constant); // This builds the right side of the => (left is CategoryName.ToUpper(), constant is category.CategoryName.ToUpper(), Equal is ==
+                    var finalExpression = Expression.Lambda<Func<Category, bool>>(body, parameterExpression);    // Builds the lambda expression
+                    // would be called with: if (db.Categories.Any(finalExpression))
+
+                    // In a callable function
+                    Func<Category, bool> newFE = searchForCategoryName(category.CategoryName.ToUpper());
+
+                    if (db.Categories.Any(newFE))
                     {
                         // generate validation error
                         isValid = false;
